@@ -3,6 +3,7 @@ package com.amberclient.utils.module
 import com.amberclient.utils.input.keybinds.CustomKeybindManager
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.option.KeyBinding
+import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.text.Text
 
 abstract class Module(
@@ -93,6 +94,11 @@ abstract class Module(
     // Called every client tick to handle key inputs (even if module is disabled)
     open fun handleKeyInput() {
         // Override in subclasses if needed
+    }
+
+    // Called during world rendering for enabled modules
+    open fun render(stack: MatrixStack) {
+        // Override in subclasses to implement render logic
     }
 
     protected fun getClient(): MinecraftClient = client

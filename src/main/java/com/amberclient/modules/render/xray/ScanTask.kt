@@ -1,6 +1,6 @@
 package com.amberclient.modules.render.xray
 
-import com.amberclient.utils.core.BasicColor
+import com.amberclient.utils.core.Color
 import net.minecraft.block.Blocks
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.client.MinecraftClient
@@ -123,14 +123,14 @@ class ScanTask(
         return renderQueue
     }
 
-    private fun isValidBlock(pos: BlockPos, world: World, blocks: Set<BlockSearchEntry>): BasicColor? {
+    private fun isValidBlock(pos: BlockPos, world: World, blocks: Set<BlockSearchEntry>): Color? {
         val state = world.getBlockState(pos)
         if (state.isAir) {
             return null
         }
 
         if (SettingsStore.getInstance().get().isShowLava && state.block == Blocks.LAVA) {
-            return BasicColor(255, 69, 0)
+            return Color(255, 69, 0, 255)
         }
 
         val defaultState = state.block.defaultState

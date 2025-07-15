@@ -1,6 +1,6 @@
 package com.amberclient.modules.render.xray
 
-import com.amberclient.utils.core.BasicColor
+import com.amberclient.utils.core.Color
 import net.minecraft.block.Blocks
 import java.util.Collections
 
@@ -10,12 +10,12 @@ object BlockStore {
 
     init {
         // Default blocks to scan
-        cache.add(BlockSearchEntry(Blocks.DIAMOND_ORE.defaultState, BasicColor(51, 236, 255), true))
-        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_DIAMOND_ORE.defaultState, BasicColor(51, 236, 255), true))
-        cache.add(BlockSearchEntry(Blocks.GOLD_ORE.defaultState, BasicColor(255, 252, 51), true))
-        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_GOLD_ORE.defaultState, BasicColor(255, 252, 51), true))
-        cache.add(BlockSearchEntry(Blocks.IRON_ORE.defaultState, BasicColor(201, 201, 183), true))
-        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_IRON_ORE.defaultState, BasicColor(201, 201, 183), true))
+        cache.add(BlockSearchEntry(Blocks.DIAMOND_ORE.defaultState, Color(51, 236, 255, 255), true))
+        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_DIAMOND_ORE.defaultState, Color(51, 236, 255, 255), true))
+        cache.add(BlockSearchEntry(Blocks.GOLD_ORE.defaultState, Color(255, 252, 51, 255), true))
+        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_GOLD_ORE.defaultState, Color(255, 252, 51, 255), true))
+        cache.add(BlockSearchEntry(Blocks.IRON_ORE.defaultState, Color(201, 201, 183, 255), true))
+        cache.add(BlockSearchEntry(Blocks.DEEPSLATE_IRON_ORE.defaultState, Color(201, 201, 183, 255), true))
     }
 
     fun getInstance(): BlockStore {

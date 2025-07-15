@@ -15,6 +15,7 @@ import com.amberclient.modules.player.FastPlace;
 import com.amberclient.modules.render.EntityESP;
 import com.amberclient.modules.render.Fullbright;
 import com.amberclient.modules.render.NoHurtCam;
+import com.amberclient.modules.render.Trajectory;
 import com.amberclient.modules.render.xray.Xray;
 import com.amberclient.modules.world.MacroRecorder.MacroRecorder;
 import com.amberclient.utils.input.keybinds.KeybindConfigManager;
@@ -24,11 +25,11 @@ import com.amberclient.utils.minecraft.MinecraftUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 
-import java.io.Console;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ModuleManager {
     private static final ModuleManager INSTANCE = new ModuleManager();
@@ -62,6 +63,7 @@ public class ModuleManager {
         registerModule(new AutoPotion());
         registerModule(new AntiHunger());
         registerModule(new FakeLag());
+        registerModule(new Trajectory()); // Replaced Trajectories with TrajectoryModule
 
         for (Module module : modules) {
             EventManager.getInstance().register(module);
@@ -85,8 +87,6 @@ public class ModuleManager {
 
     private void loadModuleKeybinds() {
         Map<String, String> savedKeybinds = KeybindConfigManager.INSTANCE.getAllModuleKeybinds();
-
-        System.out.println("[ModuleManager] Loading " + savedKeybinds.size() + " saved keybinds...");
 
         for (Map.Entry<String, String> entry : savedKeybinds.entrySet()) {
             String moduleName = entry.getKey();
@@ -125,6 +125,12 @@ public class ModuleManager {
 
     public List<Module> getModules() {
         return Collections.unmodifiableList(modules);
+    }
+
+    public List<Module> getEnabledModules() {
+        return modules.stream()
+                .filter(Module::isEnabled)
+                .collect(Collectors.toList());
     }
 
     public void toggleModule(Module module) {
