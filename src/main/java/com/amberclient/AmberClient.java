@@ -4,6 +4,7 @@ import com.amberclient.modules.world.MacroRecorder.MacroRecordingSystem;
 import com.amberclient.screens.HudRenderer;
 import com.amberclient.screens.ClickGUI;
 import com.amberclient.commands.AmberCommand;
+import com.amberclient.utils.font.FontUtil;
 import com.amberclient.utils.input.keybinds.KeybindsManager;
 import com.amberclient.utils.module.ModuleManager;
 import com.amberclient.utils.features.murdererfinder.config.ConfigManager;
@@ -43,6 +44,7 @@ public class AmberClient implements ModInitializer {
 			hudLayerRegistered = true;
 		}
 
+        FontUtil.bootstrap();
 		AmberCommand.register();
 
 		KeybindsManager.INSTANCE.initialize();
