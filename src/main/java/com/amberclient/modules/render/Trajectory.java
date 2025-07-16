@@ -4,12 +4,15 @@ import com.amberclient.utils.module.ConfigurableModule;
 import com.amberclient.utils.module.Module;
 import com.amberclient.utils.module.ModuleCategory;
 import com.amberclient.utils.module.ModuleSettings;
-import com.amberclient.utils.minecraft.RenderUtils;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.thrown.SnowballEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -17,8 +20,10 @@ import net.minecraft.util.Arm;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.RaycastContext;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.opengl.GL11;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.HashSet;
 import java.util.List;
@@ -34,35 +39,31 @@ public class Trajectory extends Module implements ConfigurableModule {
     private final ModuleSettings approxBoxVisibility;
     private final ModuleSettings arrowTrajectory;
     private final ModuleSettings lineOrigin;
-    private final ModuleSettings debugMode;
-
-    // Predefined color values
-    private static final int LINE_COLOR_R = 255;
-    private static final int LINE_COLOR_G = 0;
-    private static final int LINE_COLOR_B = 0;
-    private static final float LINE_COLOR_A = 1.0f;
 
     private final List<ModuleSettings> settings;
+
+    private static final int[] DEFAULT_COLOR = {255, 0, 0, 100}; // R, G, B, A
 
     public Trajectory() {
         super("Trajectory", "Renders the trajectory of projectiles", ModuleCategory.RENDER);
 
-        // Initialize trigger items
+        // Initialisation des items déclencheurs
         simpleItems.add(Items.SNOWBALL);
         simpleItems.add(Items.ENDER_PEARL);
         simpleItems.add(Items.EGG);
         complexItems.add(Items.BOW);
 
-        // Define configurable settings
+        // Définition des paramètres configurables
         lineVisibility = new ModuleSettings("Line Visibility", "Whether to show the trajectory line", true);
         boxVisibility = new ModuleSettings("Box Visibility", "Whether to show the hit box", true);
         approxBoxVisibility = new ModuleSettings("Approx Box Visibility", "Whether to show the approximate hit box", true);
         arrowTrajectory = new ModuleSettings("Arrow Trajectory", "Whether to show trajectory for arrows", true);
         lineOrigin = new ModuleSettings("Line Origin", "Origin of the trajectory line (1=Left, 2=Auto, 3=Right)", 2, 1, 3);
-        debugMode = new ModuleSettings("Debug Mode", "Print debug information", false);
 
-        // Initialize settings list
-        settings = List.of(lineVisibility, boxVisibility, approxBoxVisibility, arrowTrajectory, lineOrigin, debugMode);
+        settings = List.of(lineVisibility, boxVisibility, approxBoxVisibility, arrowTrajectory, lineOrigin);
+
+        // Enregistrement de l'événement de rendu
+        WorldRenderEvents.END.register(this::render);
     }
 
     @Override
@@ -70,204 +71,228 @@ public class Trajectory extends Module implements ConfigurableModule {
         return settings;
     }
 
-    @Override
-    public void render(MatrixStack stack) {
+    private void render(WorldRenderContext context) {
         if (!isEnabled()) return;
 
-        MinecraftClient client = getClient();
+        MinecraftClient client = MinecraftClient.getInstance();
         PlayerEntity player = client.player;
-        if (player == null || client.world == null) return;
-
-        // Debug pour savoir si la fonction est bien appelée
-        if (debugMode.getBooleanValue()) {
-            System.out.println("Trajectory render called");
-        }
+        if (player == null) return;
 
         ItemStack mainHandStack = player.getMainHandStack();
         ItemStack offHandStack = player.getOffHandStack();
-        Item mainItem = mainHandStack.getItem();
-        Item offItem = offHandStack.getItem();
+        boolean mainHand = simpleItems.contains(mainHandStack.getItem()) || complexItems.contains(mainHandStack.getItem());
 
-        boolean isSimple = simpleItems.contains(mainItem) || simpleItems.contains(offItem);
-        boolean isComplex = complexItems.contains(mainItem) || complexItems.contains(offItem);
-
-        if (!isSimple && !isComplex) return;
-
-        float speed;
-        float gravity;
-        boolean mainHand = simpleItems.contains(mainItem) || complexItems.contains(mainItem);
-
-        if (isSimple) {
-            speed = 1.5f;
-            gravity = 0.03f;
-        } else {
-            if (!arrowTrajectory.getBooleanValue()) return;
-
-            if (mainItem != Items.BOW && offItem != Items.BOW) return;
-
-            float bowMultiplier = 0f;
-            if (player.isUsingItem() && (player.getActiveItem().getItem() == Items.BOW)) {
-                float useTime = 72000.0f - player.getItemUseTimeLeft();
-                bowMultiplier = (useTime / 20.0f);
-                bowMultiplier = (bowMultiplier * bowMultiplier + bowMultiplier * 2.0f) / 3.0f;
-                bowMultiplier = Math.min(bowMultiplier, 1.0f);
-            } else {
-                bowMultiplier = 0.3f;
-            }
-
-            speed = bowMultiplier * 3.0f;
-            gravity = 0.05f;
-
-            if (debugMode.getBooleanValue()) {
-                System.out.println("=== TRAJECTORY DEBUG ===");
-                System.out.println("Is using item: " + player.isUsingItem());
-                System.out.println("Item use time left: " + player.getItemUseTimeLeft());
-                System.out.println("Active item: " + (player.getActiveItem() != null ? player.getActiveItem().getItem() : "null"));
-                System.out.println("Bow multiplier: " + bowMultiplier);
-                System.out.println("Speed: " + speed);
-                System.out.println("========================");
-            }
-
-            if (speed < 0.1f) speed = 0.1f;
+        if (!mainHand && !(simpleItems.contains(offHandStack.getItem()) || complexItems.contains(offHandStack.getItem()))) {
+            return;
         }
 
-        int playerside = determinePlayerSide(mainHand, player);
-
-        // Configuration OpenGL pour lignes visibles
+        // Configuration du rendu
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.disableCull();
+        RenderSystem.lineWidth(4.0f);
 
-        // Fixed: Use setShader with ShaderProgramKey instead of method reference
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        MatrixStack stack = context.matrixStack();
+        if (stack == null) return;
 
         stack.push();
-        try {
-            Tessellator tessellator = Tessellator.getInstance();
-            // Fixed: Use begin method from Tessellator instead of getBuffer
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-            Camera camera = client.gameRenderer.getCamera();
-            Vec3d cameraPos = camera.getPos();
-            Vec3d playerPos = player.getPos();
-            double playerX = playerPos.x;
-            double playerY = playerPos.y + player.getStandingEyeHeight();
-            double playerZ = playerPos.z;
+        // Set the shader program
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
-            float pitch = player.getPitch();
-            float yaw = player.getYaw();
-            double radYaw = Math.toRadians(yaw);
-            double radPitch = Math.toRadians(pitch);
+        Camera camera = context.camera();
+        World world = client.world;
+        BlockPos blockPos = new BlockPos.Mutable((int)player.getX(), (int)player.getY(), (int)player.getZ());
+        float pitch = player.getPitch();
+        float yaw = player.getYaw();
+        double eye = player.getEyeY();
 
-            double vx = -Math.sin(radYaw) * Math.cos(radPitch);
-            double vy = -Math.sin(radPitch);
-            double vz = Math.cos(radYaw) * Math.cos(radPitch);
+        int[] color = DEFAULT_COLOR;
+        boolean[] booleans = {lineVisibility.getBooleanValue(), boxVisibility.getBooleanValue(), approxBoxVisibility.getBooleanValue()};
+        int[] integers = {(int)lineOrigin.getValue()};
 
-            Vec3d velocity = new Vec3d(vx, vy, vz).normalize().multiply(speed);
-            Vec3d currentPos = new Vec3d(playerX, playerY, playerZ);
+        if (simpleItems.contains(mainHand ? mainHandStack.getItem() : offHandStack.getItem())) {
+            renderCurve(stack, bufferBuilder, camera, world, blockPos, pitch, yaw, eye, player, color, 1.5f, 0.03f, booleans, integers, mainHand);
+        } else if (complexItems.contains(mainHand ? mainHandStack.getItem() : offHandStack.getItem()) && arrowTrajectory.getBooleanValue()) {
+            float bowMultiplier = (72000.0f - player.getItemUseTimeLeft()) / 20.0f;
+            bowMultiplier = (bowMultiplier * bowMultiplier + bowMultiplier * 2.0f) / 3.0f;
+            if (bowMultiplier > 1.0f) bowMultiplier = 1.0f;
+            float speed = bowMultiplier * 3.0f;
+            renderCurve(stack, bufferBuilder, camera, world, blockPos, pitch, yaw, eye, player, color, speed, 0.05f, booleans, integers, mainHand);
+        }
 
-            for (int i = 0; i < 100; i++) {
-                Vec3d nextPos = currentPos.add(velocity);
+        // Draw the buffer
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
 
-                // Affichage de la ligne
-                if (lineVisibility.getBooleanValue()) {
-                    RenderUtils.renderSingleLine(
-                            stack, buffer,
-                            (float)(currentPos.x - cameraPos.x),
-                            (float)(currentPos.y - cameraPos.y),
-                            (float)(currentPos.z - cameraPos.z),
-                            (float)(nextPos.x - cameraPos.x),
-                            (float)(nextPos.y - cameraPos.y),
-                            (float)(nextPos.z - cameraPos.z),
-                            LINE_COLOR_R / 255f,
-                            LINE_COLOR_G / 255f,
-                            LINE_COLOR_B / 255f,
-                            LINE_COLOR_A
-                    );
+        stack.pop();
+
+        // Reset rendering settings
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
+        RenderSystem.lineWidth(1.0f);
+    }
+
+    private void renderCurve(MatrixStack stack, BufferBuilder buffer, Camera camera, World world, BlockPos pos, float pitch, float yaw, double eye, PlayerEntity player, int[] color, float speed, float gravity, boolean[] booleans, int[] integers, boolean mainHand) {
+        double accurateX = player.getX();
+        double accurateY = player.getY();
+        double accurateZ = player.getZ();
+
+        float drag = 0.99f;
+
+        float entityVelX = -MathHelper.sin(yaw * 0.017453292F) * MathHelper.cos(pitch * 0.017453292F);
+        float entityVelY = -MathHelper.sin(pitch * 0.017453292F);
+        float entityVelZ = MathHelper.cos(yaw * 0.017453292F) * MathHelper.cos(pitch * 0.017453292F);
+        Vec3d vec3d = (new Vec3d(entityVelX, entityVelY, entityVelZ)).normalize().multiply(speed);
+        Vec3d entityVelocity = new Vec3d(vec3d.x, vec3d.y, vec3d.z);
+        Vec3d entityPosition = new Vec3d(0, 1.5, 0);
+
+        int playerside = (integers[0] == 2) ? (mainHand ? 1 : -1) : (integers[0] == 3 ? 1 : -1);
+        if (player.getMainArm() == Arm.LEFT) playerside *= -1;
+
+        // Correction du calcul des offsets - utilisation d'une taille plus petite et direction corrigée
+        double handOffset = 0.4;
+        double offsetX = playerside * handOffset * Math.cos(Math.toRadians(yaw));
+        double offsetZ = playerside * handOffset * Math.sin(Math.toRadians(yaw));
+
+        double prevX = 0;
+        double prevZ = 0;
+
+        SnowballEntity tempEntity = new SnowballEntity(world, player, new ItemStack(Items.SNOWBALL));
+
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+
+        for (int i = 0; i < 100; i++) {
+            HitResult hitResult = world.raycast(new RaycastContext(
+                    new Vec3d(accurateX + entityPosition.x, accurateY + entityPosition.y, accurateZ + entityPosition.z),
+                    new Vec3d(accurateX + entityPosition.x, accurateY + entityPosition.y, accurateZ + entityPosition.z).add(entityVelocity),
+                    RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, tempEntity));
+
+            if (hitResult.getType() != HitResult.Type.MISS) {
+                double hitDistance = hitResult.getPos().distanceTo(player.getPos());
+                double boxSize = hitDistance > 30 ? hitDistance / 70 : 0.5;
+                double defaultBoxSize = 0.5;
+
+                if (booleans[1]) { // Box visibility - correction de la position
+                    renderBox(stack, buffer, matrix,
+                            hitResult.getPos().x - defaultBoxSize, hitResult.getPos().y - defaultBoxSize, hitResult.getPos().z - defaultBoxSize,
+                            hitResult.getPos().x + defaultBoxSize, hitResult.getPos().y + defaultBoxSize, hitResult.getPos().z + defaultBoxSize, color);
                 }
-
-                // Collision avec bloc
-                HitResult hit = client.world.raycast(new RaycastContext(
-                        currentPos, nextPos,
-                        RaycastContext.ShapeType.OUTLINE,
-                        RaycastContext.FluidHandling.NONE,
-                        player
-                ));
-
-                if (hit.getType() != HitResult.Type.MISS) {
-                    Vec3d hitPos = hit.getPos();
-                    double distance = hitPos.distanceTo(player.getPos());
-                    double boxSize = distance > 30 ? distance / 70 : 0.5;
-                    double defaultBoxSize = 0.5;
-
-                    if (boxVisibility.getBooleanValue()) {
-                        renderBox(stack, buffer,
-                                hitPos.x - defaultBoxSize - cameraPos.x,
-                                hitPos.y - defaultBoxSize - cameraPos.y,
-                                hitPos.z - defaultBoxSize - cameraPos.z,
-                                hitPos.x + defaultBoxSize - cameraPos.x,
-                                hitPos.y + defaultBoxSize - cameraPos.y,
-                                hitPos.z + defaultBoxSize - cameraPos.z);
-                    }
-
-                    if (approxBoxVisibility.getBooleanValue()) {
-                        renderBox(stack, buffer,
-                                hitPos.x - boxSize - cameraPos.x,
-                                hitPos.y - boxSize - cameraPos.y,
-                                hitPos.z - boxSize - cameraPos.z,
-                                hitPos.x + boxSize - cameraPos.x,
-                                hitPos.y + boxSize - cameraPos.y,
-                                hitPos.z + boxSize - cameraPos.z);
-                    }
-
-                    break;
+                if (booleans[2]) { // Approx box visibility - correction de la position
+                    renderBox(stack, buffer, matrix,
+                            hitResult.getPos().x - boxSize, hitResult.getPos().y - boxSize, hitResult.getPos().z - boxSize,
+                            hitResult.getPos().x + boxSize, hitResult.getPos().y + boxSize, hitResult.getPos().z + boxSize, color);
                 }
-
-                currentPos = nextPos;
-                velocity = velocity.multiply(0.99);
-                velocity = new Vec3d(velocity.x, velocity.y - gravity, velocity.z);
-
-                if (currentPos.y < player.getWorld().getBottomY()) break;
+                break;
             }
 
-            // Fixed: Use BufferRenderer.drawWithGlobalProgram with the built mesh
-            BufferRenderer.drawWithGlobalProgram(buffer.build());
+            // Correction du calcul des positions - utilisation des coordonnées monde
+            double startx = player.getX() + prevX + offsetX;
+            double starty = player.getEyeY() + (entityPosition.y - 1.5);
+            double startz = player.getZ() + prevZ + offsetZ;
 
-        } catch (Exception e) {
-            System.err.println("Erreur lors du rendu de la trajectoire : " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            stack.pop();
+            entityPosition = entityPosition.add(entityVelocity);
+            entityVelocity = entityVelocity.multiply(drag);
+            entityVelocity = new Vec3d(entityVelocity.x, entityVelocity.y - gravity, entityVelocity.z);
+
+            // Suppression de la rotation complexe - utilisation directe des positions
+            double newX = entityPosition.x;
+            double newZ = entityPosition.z;
+
+            if (booleans[0]) { // Line visibility - correction du calcul des positions finales
+                double endx = player.getX() + newX + offsetX;
+                double endy = player.getEyeY() + (entityPosition.y - 1.5);
+                double endz = player.getZ() + newZ + offsetZ;
+                renderSingleLine(stack, buffer, (float)startx, (float)starty, (float)startz, (float)endx, (float)endy, (float)endz, color);
+            }
+
+            prevX = newX;
+            prevZ = newZ;
         }
-
-        // Restauration OpenGL
-        GL11.glDisable(GL11.GL_LINE_SMOOTH);
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableCull();
-        RenderSystem.disableBlend();
     }
 
-    private int determinePlayerSide(boolean mainHand, PlayerEntity player) {
-        int lineOriginValue = lineOrigin.getIntValue();
-        int playerside = 1;
-        if (lineOriginValue != 2) {
-            playerside = (lineOriginValue == 3 ? 1 : -1);
-        } else {
-            playerside = (mainHand ? 1 : -1);
-        }
-        if (player.getMainArm() == Arm.LEFT) {
-            playerside *= -1;
-        }
-        return playerside;
+    private void renderBox(MatrixStack stack, BufferBuilder buffer, Matrix4f matrix, double x1, double y1, double z1, double x2, double y2, double z2, int[] color) {
+        float r = color[0] / 255f;
+        float g = color[1] / 255f;
+        float b = color[2] / 255f;
+        float a = color[3] / 100f;
+
+        // Conversion en coordonnées relatives à la caméra
+        Vec3d cameraPos = MinecraftClient.getInstance().gameRenderer.getCamera().getPos();
+        float cx1 = (float)(x1 - cameraPos.x);
+        float cy1 = (float)(y1 - cameraPos.y);
+        float cz1 = (float)(z1 - cameraPos.z);
+        float cx2 = (float)(x2 - cameraPos.x);
+        float cy2 = (float)(y2 - cameraPos.y);
+        float cz2 = (float)(z2 - cameraPos.z);
+
+        // Bottom face
+        buffer.vertex(matrix, cx1, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy1, cz1).color(r, g, b, a);
+
+        // Top face
+        buffer.vertex(matrix, cx1, cy2, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy2, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy2, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy2, cz1).color(r, g, b, a);
+
+        // Vertical edges
+        buffer.vertex(matrix, cx1, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy2, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy1, cz2).color(r, g, b, a);
+        buffer.vertex(matrix, cx1, cy2, cz2).color(r, g, b, a);
     }
 
-    private void renderBox(MatrixStack stack, VertexConsumer buffer, double x1, double y1, double z1, double x2, double y2, double z2) {
-        Box box = new Box(x1, y1, z1, x2, y2, z2);
-        RenderUtils.drawBox(stack, buffer, box, LINE_COLOR_R / 255f, LINE_COLOR_G / 255f, LINE_COLOR_B / 255f, LINE_COLOR_A);
+    private void renderSingleLine(MatrixStack stack, BufferBuilder buffer, float x1, float y1, float z1, float x2, float y2, float z2, int[] color) {
+        float r = color[0] / 255f;
+        float g = color[1] / 255f;
+        float b = color[2] / 255f;
+        float a = color[3] / 100f;
+
+        // Conversion en coordonnées relatives à la caméra
+        Vec3d cameraPos = MinecraftClient.getInstance().gameRenderer.getCamera().getPos();
+        float cx1 = (float)(x1 - cameraPos.x);
+        float cy1 = (float)(y1 - cameraPos.y);
+        float cz1 = (float)(z1 - cameraPos.z);
+        float cx2 = (float)(x2 - cameraPos.x);
+        float cy2 = (float)(y2 - cameraPos.y);
+        float cz2 = (float)(z2 - cameraPos.z);
+
+        Matrix4f matrix = stack.peek().getPositionMatrix();
+        buffer.vertex(matrix, cx1, cy1, cz1).color(r, g, b, a);
+        buffer.vertex(matrix, cx2, cy2, cz2).color(r, g, b, a);
     }
 
     @Override
-    public void onSettingChanged(@NotNull ModuleSettings setting) { }
+    public void onSettingChanged(@NotNull ModuleSettings setting) {
+        if (setting == lineVisibility) {
+            System.out.println("Line visibility changed to: " + setting.getBooleanValue());
+        } else if (setting == boxVisibility) {
+            System.out.println("Box visibility changed to: " + setting.getBooleanValue());
+        } else if (setting == approxBoxVisibility) {
+            System.out.println("Approx box visibility changed to: " + setting.getBooleanValue());
+        } else if (setting == arrowTrajectory) {
+            System.out.println("Arrow trajectory changed to: " + setting.getBooleanValue());
+        } else if (setting == lineOrigin) {
+            System.out.println("Line origin changed to: " + setting.getIntegerValue());
+        }
+    }
 }
