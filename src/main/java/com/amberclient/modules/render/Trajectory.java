@@ -47,7 +47,7 @@ public class Trajectory extends Module implements ConfigurableModule {
     private static final int[] DEFAULT_COLOR = {255, 0, 0, 100}; // R, G, B, A
 
     public Trajectory() {
-        super("Trajectory", "Renders the trajectory of projectiles", ModuleCategory.RENDER);
+        super("Trajectory (W.I.P)", "Renders the trajectory of projectiles (unusable atm)", ModuleCategory.RENDER);
 
         // Initialisation des items déclencheurs
         simpleItems.add(Items.SNOWBALL);
