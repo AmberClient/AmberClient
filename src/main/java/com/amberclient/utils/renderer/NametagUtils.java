@@ -1,4 +1,4 @@
-package com.amberclient.utils.minecraft.render;
+package com.amberclient.utils.renderer;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;
@@ -53,7 +53,7 @@ public class NametagUtils {
         mmMat4.mul(projection, pmMat4);
         boolean behind = pmMat4.w <= 0.f;
         if (behind && !allowBehind) return false;
-        toScreen(pmMat4);
+        toScreen();
         double x = pmMat4.x * mc.getWindow().getFramebufferWidth();
         double y = pmMat4.y * mc.getWindow().getFramebufferHeight();
         if (behind) {
@@ -83,11 +83,11 @@ public class NametagUtils {
         return MathHelper.clamp(1 - dist * 0.01, 0.5, Integer.MAX_VALUE);
     }
 
-    private static void toScreen(Vector4f vec) {
-        float newW = 1.0f / vec.w * 0.5f;
-        vec.x = vec.x * newW + 0.5f;
-        vec.y = vec.y * newW + 0.5f;
-        vec.z = vec.z * newW + 0.5f;
-        vec.w = newW;
+    private static void toScreen() {
+        float newW = 1.0f / NametagUtils.pmMat4.w * 0.5f;
+        NametagUtils.pmMat4.x = NametagUtils.pmMat4.x * newW + 0.5f;
+        NametagUtils.pmMat4.y = NametagUtils.pmMat4.y * newW + 0.5f;
+        NametagUtils.pmMat4.z = NametagUtils.pmMat4.z * newW + 0.5f;
+        NametagUtils.pmMat4.w = newW;
     }
 }

@@ -25,6 +25,7 @@
     "client.interaction.ClientPlayNetworkHandlerMixin",
     "features.EntityESPMixin",
     "features.NoHurtCamMixin",
+    "features.TitleScreenMixin",
     "features.murdererfinder.ClientPlayNetworkHandlerMixin",
     "features.murdererfinder.InGameHudMixin",
     "features.murdererfinder.LivingEntityRendererMixin",
