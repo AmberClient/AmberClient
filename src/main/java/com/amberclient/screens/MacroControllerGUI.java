@@ -4,7 +4,6 @@ package com.amberclient.screens;
 // TODO: Don't mind this mess, imma clean this later
 //
 
-import com.amberclient.AmberClient;
 import com.amberclient.modules.world.MacroRecorder.MacroPlaybackSystem;
 import com.amberclient.modules.world.MacroRecorder.MacroRecordingSystem;
 import com.amberclient.modules.world.MacroRecorder.MacrosManager;
@@ -22,7 +21,7 @@ import org.lwjgl.glfw.GLFW;
 import java.awt.Color;
 import java.util.*;
 
-public class MacroRecorderGUI extends Screen {
+public class MacroControllerGUI extends Screen {
     // Theme colors
     private static final int BASE_BG = new Color(20, 20, 25, 200).getRGB();
     private static final int PANEL_BG = new Color(30, 30, 35, 255).getRGB();
@@ -53,9 +52,6 @@ public class MacroRecorderGUI extends Screen {
 
     // UI state
     private boolean editingName = false;
-    private String statusMessage = "Ready to record";
-    private long statusMessageTime = 0;
-    private int statusMessageColor = TEXT;
 
     private final MacroRecordingSystem recordingSystem;
     private MacroRecordingSystem.MacroRecordingListener recordingListener;
@@ -65,7 +61,7 @@ public class MacroRecorderGUI extends Screen {
 
     private final MacrosManager persistenceManager;
 
-    public MacroRecorderGUI() {
+    public MacroControllerGUI() {
         super(Text.literal("Macro Recorder - Amber Client"));
         this.recordingSystem = MacroRecordingSystem.getInstance();
         this.persistenceManager = new MacrosManager();
@@ -492,9 +488,7 @@ public class MacroRecorderGUI extends Screen {
     }
 
     private void setStatusMessage(String message, int color) {
-        statusMessage = message;
-        statusMessageColor = color;
-        statusMessageTime = System.currentTimeMillis();
+        long statusMessageTime = System.currentTimeMillis();
     }
 
     @Override

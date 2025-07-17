@@ -1,6 +1,6 @@
 package com.amberclient.modules.world.MacroRecorder;
 
-import com.amberclient.screens.MacroRecorderGUI;
+import com.amberclient.screens.MacroControllerGUI;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -53,7 +53,7 @@ public class MacroRecordingSystem {
 
         initializePreviousStates();
 
-        if (client.currentScreen instanceof MacroRecorderGUI) {
+        if (client.currentScreen instanceof MacroControllerGUI) {
             client.setScreen(null);
         }
 
@@ -84,7 +84,7 @@ public class MacroRecordingSystem {
                     isRecording, recordedActions.size());
         }
 
-        if (client.currentScreen instanceof MacroRecorderGUI) {
+        if (client.currentScreen instanceof MacroControllerGUI) {
             stopRecording();
             return;
         }
