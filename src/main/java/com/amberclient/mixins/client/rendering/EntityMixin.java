@@ -2,6 +2,7 @@ package com.amberclient.mixins.client.rendering;
 
 import com.amberclient.modules.movement.SafeWalk;
 import net.minecraft.block.BlockState;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
@@ -36,7 +37,13 @@ public abstract class EntityMixin {
             argsOnly = true
     )
     private net.minecraft.util.math.Vec3d modifyMovementVector(net.minecraft.util.math.Vec3d movement) {
-        if ((Entity) (Object) this instanceof PlayerEntity player && (SafeWalk.safewalk || isSneaking()) && isOnGround()) {
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        if ((Entity) (Object) this instanceof PlayerEntity player &&
+                client.player != null &&
+                player.getUuid().equals(client.player.getUuid()) &&
+                (SafeWalk.safewalk || isSneaking()) &&
+                isOnGround()) {
             double x = movement.x;
             double z = movement.z;
             double step = 0.05D;

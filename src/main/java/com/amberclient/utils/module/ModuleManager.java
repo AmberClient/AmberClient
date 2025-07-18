@@ -17,6 +17,7 @@ import com.amberclient.modules.render.Fullbright;
 import com.amberclient.modules.render.NoHurtCam;
 import com.amberclient.modules.render.Trajectory;
 import com.amberclient.modules.render.xray.Xray;
+import com.amberclient.modules.world.GhostHand;
 import com.amberclient.modules.world.MacroRecorder.MacroController;
 import com.amberclient.utils.input.keybinds.KeybindConfigManager;
 import com.amberclient.utils.input.keybinds.CustomKeybindManager;
@@ -63,7 +64,8 @@ public class ModuleManager {
         registerModule(new AutoPotion());
         registerModule(new AntiHunger());
         registerModule(new FakeLag());
-        registerModule(new Trajectory()); // Replaced Trajectories with TrajectoryModule
+        registerModule(new Trajectory());
+        registerModule(new GhostHand());
 
         for (Module module : modules) {
             EventManager.getInstance().register(module);

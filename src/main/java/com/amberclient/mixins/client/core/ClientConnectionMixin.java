@@ -3,6 +3,7 @@ package com.amberclient.mixins.client.core;
 import com.amberclient.events.core.EventManager;
 import com.amberclient.events.network.PacketEvent;
 import com.amberclient.modules.combat.FakeLag;
+import com.amberclient.utils.module.ModuleManager;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.OffThreadException;
 import net.minecraft.network.listener.PacketListener;
@@ -23,7 +24,8 @@ public class ClientConnectionMixin {
 
     @Inject(method = "send(Lnet/minecraft/network/packet/Packet;)V", at = @At("HEAD"), cancellable = true)
     private void onSendPacket(Packet<?> packet, CallbackInfo ci) {
-        if (FakeLag.isBypassing()) {
+        FakeLag fakeLag = (FakeLag) ModuleManager.getInstance().findModuleByName("FakeLag");
+        if (fakeLag == null || FakeLag.isBypassing() || !fakeLag.isEnabled()) {
             return;
         }
 
