@@ -2,6 +2,7 @@ package com.amberclient.screens;
 
 import com.amberclient.AmberClient;
 import com.amberclient.modules.miscellaneous.Transparency;
+import com.amberclient.modules.miscellaneous.NoAnimations;
 import com.amberclient.utils.module.Module;
 import com.amberclient.utils.module.ModuleManager;
 import com.amberclient.utils.module.ConfigurableModule;
@@ -93,8 +94,10 @@ public class ClickGUI extends Screen {
     @Override
     public void render(@NotNull DrawContext context, int mouseX, int mouseY, float delta) {
         long time = System.currentTimeMillis();
-        animProgress = MathHelper.clamp(animProgress + (time - lastTime) / 300.0f, 0.0f, 1.0f);
-        configAnim = MathHelper.clamp(configAnim + (configModule != null ? 1 : -1) * (time - lastTime) / 200.0f, 0.0f, 1.0f);
+        boolean animationsDisabled = isAnimationsDisabled();
+        animProgress = animationsDisabled ? 1.0f : MathHelper.clamp(animProgress + (time - lastTime) / 300.0f, 0.0f, 1.0f);
+        configAnim = animationsDisabled ? (configModule != null ? 1.0f : 0.0f) :
+                MathHelper.clamp(configAnim + (configModule != null ? 1 : -1) * (time - lastTime) / 200.0f, 0.0f, 1.0f);
         lastTime = time;
 
         float trans = getTransparency();
@@ -128,7 +131,7 @@ public class ClickGUI extends Screen {
 
     private PanelBounds calcPanel() {
         int w = Math.min(width - 40, 800), h = Math.min(height - 100, 400);
-        float scale = 0.8f + 0.2f * animProgress;
+        float scale = isAnimationsDisabled() ? 1.0f : 0.8f + 0.2f * animProgress;
         int scaledW = (int)(w * scale), scaledH = (int)(h * scale);
         return new PanelBounds(width / 2 - scaledW / 2, 82 + (h - scaledH) / 2, scaledW, scaledH);
     }
@@ -523,6 +526,11 @@ public class ClickGUI extends Screen {
             settings = isConfigurable ? ((ConfigurableModule)m).getSettings() : List.of();
         }
         boolean isEnabled() { return module.isEnabled(); }
+    }
+
+    private boolean isAnimationsDisabled() {
+        return ModuleManager.getInstance().getModules().stream()
+                .anyMatch(m -> m instanceof NoAnimations && m.isEnabled());
     }
 
     @Override

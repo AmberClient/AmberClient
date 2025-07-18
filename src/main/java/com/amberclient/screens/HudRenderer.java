@@ -33,7 +33,7 @@ public class HudRenderer {
         List<Module> enabledModules = ModuleManager.getInstance().getModules()
                 .stream()
                 .filter(Module::isEnabled)
-                .filter(module -> !module.getName().equals("ActiveMods") && !module.getName().equals("Transparency") && !module.getName().equals("DiscordRPC"))
+                .filter(module -> !module.getName().equals("ActiveMods") && !module.getName().equals("Transparency") && !module.getName().equals("DiscordRPC") && !module.getName().equals("NoAnimations"))
                 .toList();
 
         if (enabledModules.isEmpty()) {

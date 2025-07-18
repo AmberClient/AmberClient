@@ -4,12 +4,14 @@ import com.amberclient.events.core.EventManager;
 import com.amberclient.modules.combat.*;
 import com.amberclient.modules.miscellaneous.DiscordRPC;
 import com.amberclient.modules.miscellaneous.ActiveMods;
+import com.amberclient.modules.miscellaneous.NoAnimations;
 import com.amberclient.modules.miscellaneous.Transparency;
 import com.amberclient.modules.minigames.MMFinder;
 import com.amberclient.modules.movement.AutoClutch;
 import com.amberclient.modules.movement.NoFall;
 import com.amberclient.modules.movement.SafeWalk;
 import com.amberclient.modules.player.AntiHunger;
+import com.amberclient.modules.player.FakeLag;
 import com.amberclient.modules.player.FastBreak;
 import com.amberclient.modules.player.FastPlace;
 import com.amberclient.modules.render.EntityESP;
@@ -66,6 +68,7 @@ public class ModuleManager {
         registerModule(new FakeLag());
         registerModule(new Trajectory());
         registerModule(new GhostHand());
+        registerModule(new NoAnimations());
 
         for (Module module : modules) {
             EventManager.getInstance().register(module);

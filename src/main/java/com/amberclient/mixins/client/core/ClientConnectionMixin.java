@@ -2,7 +2,7 @@ package com.amberclient.mixins.client.core;
 
 import com.amberclient.events.core.EventManager;
 import com.amberclient.events.network.PacketEvent;
-import com.amberclient.modules.combat.FakeLag;
+import com.amberclient.modules.player.FakeLag;
 import com.amberclient.utils.module.ModuleManager;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.OffThreadException;

@@ -1,21 +1,31 @@
-package com.amberclient.modules.combat
+package com.amberclient.modules.player
 
 import com.amberclient.events.core.EventListener
 import com.amberclient.events.core.EventManager
 import com.amberclient.events.network.PacketEvent
+import com.amberclient.utils.module.ConfigurableModule
 import com.amberclient.utils.module.Module
 import com.amberclient.utils.module.ModuleCategory
 import com.amberclient.utils.module.ModuleSettings
-import com.amberclient.utils.module.ConfigurableModule
 import net.minecraft.client.MinecraftClient
-import net.minecraft.network.packet.c2s.play.*
+import net.minecraft.network.ClientConnection
+import net.minecraft.network.packet.Packet
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class FakeLag : Module("FakeLag", "Holds back packets to prevent you from being hit", ModuleCategory.COMBAT), ConfigurableModule {
+class FakeLag : Module("FakeLag", "Holds back packets to prevent you from being hit", ModuleCategory.PLAYER),
+    ConfigurableModule {
 
     private val delay = ModuleSettings("Delay (ms)", "Delay time for packet delay", 200.0, 50.0, 1000.0, 10.0)
     private val onlyMovement = ModuleSettings("Only Movement", "Delays motion packets only", true)
-    private val maxPackets = ModuleSettings("Max Packets", "Maximum number of packages to retain", 20.0, 5.0, 100.0, 1.0)
+    private val maxPackets =
+        ModuleSettings("Max Packets", "Maximum number of packages to retain", 20.0, 5.0, 100.0, 1.0)
     private val pulse = ModuleSettings("Pulse", "Sends packets in bursts", false)
     private val pulseDelay = ModuleSettings("Pulse Delay (ms)", "Delay between bursts", 1000.0, 500.0, 5000.0, 50.0)
 
@@ -42,7 +52,7 @@ class FakeLag : Module("FakeLag", "Holds back packets to prevent you from being 
     data class QueuedPacket(
         val packet: Any,
         val timestamp: Long,
-        val connection: net.minecraft.network.ClientConnection
+        val connection: ClientConnection
     )
 
     override fun onEnable() {
@@ -160,14 +170,14 @@ class FakeLag : Module("FakeLag", "Holds back packets to prevent you from being 
             bypassPacketSend = true
 
             val connection = queuedPacket.connection
-            val packet = queuedPacket.packet as net.minecraft.network.packet.Packet<*>
+            val packet = queuedPacket.packet as Packet<*>
 
             connection.send(packet)
 
         } catch (_: Exception) {
             try {
                 val mc = MinecraftClient.getInstance()
-                mc.networkHandler?.sendPacket(queuedPacket.packet as net.minecraft.network.packet.Packet<*>)
+                mc.networkHandler?.sendPacket(queuedPacket.packet as Packet<*>)
             } catch (_: Exception) { }
         } finally {
             bypassPacketSend = false
