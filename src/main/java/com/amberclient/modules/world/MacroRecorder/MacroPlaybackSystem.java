@@ -1,6 +1,6 @@
 package com.amberclient.modules.world.MacroRecorder;
 
-import com.amberclient.mixins.KeyBindingAccessor;
+import com.amberclient.mixins.accessors.KeyBindingAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import org.apache.logging.log4j.LogManager;

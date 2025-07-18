@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public abstract class EntityMixin {
 
     /*
-       ......SAFE WALK MODULE
+          SAFE WALK MODULE
      */
 
     @Shadow private World world;
@@ -101,7 +101,7 @@ public abstract class EntityMixin {
                         (int) Math.floor(cornerZ)
                 );
 
-                if (isFullBlockAtPosition(pos)) {
+                if (hasSolidSupport(pos)) {
                     return false;
                 }
             }
@@ -111,7 +111,7 @@ public abstract class EntityMixin {
     }
 
     @Unique
-    private boolean isFullBlockAtPosition(BlockPos pos) {
+    private boolean hasSolidSupport(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
 
         if (state.isAir()) {
@@ -125,13 +125,6 @@ public abstract class EntityMixin {
         }
 
         Box boundingBox = shape.getBoundingBox();
-
-        boolean isFullHeight = boundingBox.getLengthY() >= 0.9;
-        boolean isFullWidth = boundingBox.getLengthX() >= 0.9;
-        boolean isFullDepth = boundingBox.getLengthZ() >= 0.9;
-
-        boolean startsAtBottom = boundingBox.minY <= 0.1;
-
-        return isFullHeight && isFullWidth && isFullDepth && startsAtBottom;
+        return boundingBox.maxY > 0.5;
     }
 }

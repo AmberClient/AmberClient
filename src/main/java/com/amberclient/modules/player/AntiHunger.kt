@@ -5,7 +5,7 @@ import com.amberclient.utils.module.Module
 import com.amberclient.utils.module.ModuleSettings
 import com.amberclient.events.player.SendMovementPacketsEvent
 import com.amberclient.events.network.PacketEvent
-import com.amberclient.mixins.PlayerMoveC2SPacketAccessor
+import com.amberclient.mixins.accessors.PlayerMoveC2SPacketAccessor
 import com.amberclient.events.core.EventListener
 import com.amberclient.utils.module.ModuleCategory
 import net.minecraft.client.MinecraftClient

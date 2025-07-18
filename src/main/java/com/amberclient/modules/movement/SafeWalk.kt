@@ -73,7 +73,7 @@ class SafeWalk : Module("SafeWalk", "Prevents falling off edges", ModuleCategory
             distanceUpdateTicks++
             val updateInterval = 40 + random.nextInt(80)
             if (distanceUpdateTicks >= updateInterval) {
-                currentEdgeDistance = 0.7 + (random.nextDouble() * 0.6)
+                currentEdgeDistance = 0.5 + (random.nextDouble() * 0.1)
                 distanceUpdateTicks = 0
             }
         } else {

@@ -1,4 +1,4 @@
-package com.amberclient.mixins;
+package com.amberclient.mixins.accessors;
 
 import net.minecraft.client.option.KeyBinding;
 import org.spongepowered.asm.mixin.Mixin;

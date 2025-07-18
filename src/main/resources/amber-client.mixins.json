@@ -4,7 +4,7 @@
   "package": "com.amberclient.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "PlayerMoveC2SPacketAccessor",
+    "accessors.PlayerMoveC2SPacketAccessor",
     "client.core.ClientConnectionMixin",
     "client.core.MinecraftClientMixin",
     "client.rendering.EntityHitboxMixin",
@@ -20,7 +20,7 @@
     "features.murdererfinder.ScoreboardMixin"
   ],
   "client": [
-    "KeyBindingAccessor",
+    "accessors.KeyBindingAccessor",
     "client.interaction.ClientPlayerInteractionManagerMixin",
     "client.interaction.ClientPlayNetworkHandlerMixin",
     "features.EntityESPMixin",
