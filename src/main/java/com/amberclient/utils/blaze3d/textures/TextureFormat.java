@@ -7,7 +7,8 @@ import net.fabricmc.api.Environment;
 public enum TextureFormat {
     RGBA8(4),
     RED8(1),
-    DEPTH32(4);
+    DEPTH32(4),
+    RGBA8_UNORM(1);
 
     private final int pixelSize;
 

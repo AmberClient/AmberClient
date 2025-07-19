@@ -15,10 +15,8 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.gl.Defines;
 import com.amberclient.utils.blaze3d.UniformType;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.annotation.DeobfuscateClass;
 
 @Environment(EnvType.CLIENT)
-@DeobfuscateClass
 public class RenderPipeline {
     private final Identifier location;
     private final Identifier vertexShader;
@@ -170,7 +168,6 @@ public class RenderPipeline {
     }
 
     @Environment(EnvType.CLIENT)
-    @DeobfuscateClass
     public static class Builder {
         private Optional<Identifier> location = Optional.empty();
         private Optional<Identifier> fragmentShader = Optional.empty();
@@ -461,7 +458,6 @@ public class RenderPipeline {
     }
 
     @Environment(EnvType.CLIENT)
-    @DeobfuscateClass
     public record Snippet(
             Optional<Identifier> vertexShader,
             Optional<Identifier> fragmentShader,
@@ -482,7 +478,6 @@ public class RenderPipeline {
     }
 
     @Environment(EnvType.CLIENT)
-    @DeobfuscateClass
     public record UniformDescription(String name, UniformType type) {
     }
 }

@@ -7,6 +7,7 @@ import com.amberclient.utils.blaze3d.pipeline.CompiledRenderPipeline;
 import com.amberclient.utils.blaze3d.pipeline.RenderPipeline;
 import com.amberclient.utils.blaze3d.shaders.ShaderType;
 import com.amberclient.utils.blaze3d.textures.GpuTexture;
+import com.amberclient.utils.blaze3d.textures.GpuTextureView;
 import com.amberclient.utils.blaze3d.textures.TextureFormat;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -23,13 +24,17 @@ import org.jetbrains.annotations.Nullable;
 public interface GpuDevice {
     CommandEncoder createCommandEncoder();
 
-    GpuTexture createTexture(@Nullable Supplier<String> labelGetter, TextureFormat format, int width, int height, int mipLevels);
+    GpuTexture createTexture(@Nullable Supplier<String> labelGetter, int usage, TextureFormat format, int width, int height, int depthOrLayers, int mipLevels);
 
-    GpuTexture createTexture(@Nullable String label, TextureFormat format, int width, int height, int mipLevels);
+    GpuTexture createTexture(@Nullable String label, int usage, TextureFormat format, int width, int height, int depthOrLayers, int mipLevels);
 
-    GpuBuffer createBuffer(@Nullable Supplier<String> labelGetter, BufferType type, BufferUsage usage, int size);
+    GpuTextureView createTextureView(GpuTexture texture);
 
-    GpuBuffer createBuffer(@Nullable Supplier<String> labelGetter, BufferType type, BufferUsage usage, ByteBuffer source);
+    GpuTextureView createTextureView(GpuTexture texture, int baseMipLevel, int mipLevels);
+
+    GpuBuffer createBuffer(@Nullable Supplier<String> labelGetter, int usage, int size);
+
+    GpuBuffer createBuffer(@Nullable Supplier<String> labelGetter, int usage, ByteBuffer data);
 
     String getImplementationInformation();
 
@@ -46,6 +51,8 @@ public interface GpuDevice {
     String getRenderer();
 
     int getMaxTextureSize();
+
+    int getUniformOffsetAlignment();
 
     default CompiledRenderPipeline precompilePipeline(RenderPipeline pipeline) {
         return this.precompilePipeline(pipeline, null);

@@ -1,4 +1,4 @@
-package com.amberclient.utils.renderer;
+package com.amberclient.utils.render;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.Vec3d;

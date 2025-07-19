@@ -19,6 +19,7 @@ import java.util.Set;
 public class MinecraftUtils {
     private static final MinecraftClient mc = MinecraftClient.getInstance();
     public static double frameTime;
+    public static boolean rendering3D = true;
 
     private static final Set<EntityType<?>> HOSTILE_ENTITIES = new HashSet<>();
     private static final Set<EntityType<?>> NEUTRAL_ENTITIES = new HashSet<>();
@@ -140,4 +141,6 @@ public class MinecraftUtils {
         ModContainer container = FabricLoader.getInstance().getModContainer(modId).get();
         return container.getMetadata();
     }
+
+    // TODO: unscaledProjection() & scaledProjection()
 }
