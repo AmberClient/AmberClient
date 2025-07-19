@@ -101,7 +101,7 @@ public abstract class TitleScreenMixin extends Screen {
 
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-        if (isHovered) { renderTooltip(context, tooltip, mouseX, mouseY); }
+        if (isHovered) { renderTooltip(context, tooltip, x); }
     }
 
     @Unique
@@ -113,15 +113,16 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     @Unique
-    private void renderTooltip(DrawContext context, String text, int mouseX, int mouseY) {
+    private void renderTooltip(DrawContext context, String text, int buttonX) {
         int tooltipWidth = MinecraftClient.getInstance().textRenderer.getWidth(text) + 8;
         int tooltipHeight = 16;
-        int tooltipX = mouseX - tooltipWidth / 2;
-        int tooltipY = mouseY - tooltipHeight - 8;
+
+        int tooltipX = buttonX + (BUTTON_SIZE / 2) - (tooltipWidth / 2);
+
+        int tooltipY = MARGIN_TOP + BUTTON_SIZE + 8;
 
         if (tooltipX < 4) tooltipX = 4;
         if (tooltipX + tooltipWidth > this.width - 4) tooltipX = this.width - tooltipWidth - 4;
-        if (tooltipY < 4) tooltipY = mouseY + 8;
 
         context.fill(tooltipX + 2, tooltipY + 2, tooltipX + tooltipWidth + 2, tooltipY + tooltipHeight + 2,
                 new Color(0, 0, 0, 100).getRGB());
