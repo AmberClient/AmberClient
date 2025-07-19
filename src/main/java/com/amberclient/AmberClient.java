@@ -10,6 +10,7 @@ import com.amberclient.utils.module.Module;
 import com.amberclient.utils.module.ModuleManager;
 import com.amberclient.utils.features.murdererfinder.config.ConfigManager;
 import com.amberclient.utils.discord.DiscordManager;
+import com.amberclient.utils.minecraft.MinecraftUtils;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback;
@@ -91,6 +92,10 @@ public class AmberClient implements ModInitializer {
                 discordManager.updatePresence();
                 discordUpdateTicker = 0;
             }
+        }
+
+        if (client.getRenderTickCounter() != null) {
+            MinecraftUtils.updateFrameTime(client.getRenderTickCounter().getTickDelta(true));
         }
     }
 }

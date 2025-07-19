@@ -14,10 +14,7 @@ import com.amberclient.modules.player.AntiHunger;
 import com.amberclient.modules.player.FakeLag;
 import com.amberclient.modules.player.FastBreak;
 import com.amberclient.modules.player.FastPlace;
-import com.amberclient.modules.render.EntityESP;
-import com.amberclient.modules.render.Fullbright;
-import com.amberclient.modules.render.NoHurtCam;
-import com.amberclient.modules.render.Trajectory;
+import com.amberclient.modules.render.*;
 import com.amberclient.modules.render.xray.Xray;
 import com.amberclient.modules.world.GhostHand;
 import com.amberclient.modules.world.MacroRecorder.MacroController;
@@ -69,6 +66,7 @@ public class ModuleManager {
         registerModule(new Trajectory());
         registerModule(new GhostHand());
         registerModule(new NoAnimations());
+        registerModule(new Tracers());
 
         for (Module module : modules) {
             EventManager.getInstance().register(module);

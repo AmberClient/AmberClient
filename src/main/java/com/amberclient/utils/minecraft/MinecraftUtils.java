@@ -18,6 +18,7 @@ import java.util.Set;
 
 public class MinecraftUtils {
     private static final MinecraftClient mc = MinecraftClient.getInstance();
+    public static double frameTime;
 
     private static final Set<EntityType<?>> HOSTILE_ENTITIES = new HashSet<>();
     private static final Set<EntityType<?>> NEUTRAL_ENTITIES = new HashSet<>();
@@ -111,6 +112,10 @@ public class MinecraftUtils {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc != null && mc.inGameHud != null)
             mc.inGameHud.getChatHud().addMessage(message);
+    }
+
+    public static void updateFrameTime(float tickDelta) {
+        frameTime = tickDelta / 20.0;
     }
 
     public static void sendChatMessage(String message) {
