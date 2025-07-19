@@ -1,4 +1,4 @@
-package com.amberclient.gui;
+package com.amberclient.screens;
 
 import com.amberclient.modules.miscellaneous.ActiveMods;
 import com.amberclient.utils.module.Module;

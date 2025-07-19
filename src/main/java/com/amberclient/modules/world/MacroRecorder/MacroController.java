@@ -1,6 +1,6 @@
 package com.amberclient.modules.world.MacroRecorder;
 
-import com.amberclient.gui.MacroControllerGUI;
+import com.amberclient.screens.MacroControllerGUI;
 import com.amberclient.utils.module.Module;
 import com.amberclient.utils.module.ModuleCategory;
 import net.minecraft.client.MinecraftClient;

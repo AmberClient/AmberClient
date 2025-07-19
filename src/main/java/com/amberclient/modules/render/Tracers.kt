@@ -1,7 +1,9 @@
 package com.amberclient.modules.render
 
+import com.amberclient.utils.module.ConfigurableModule
 import com.amberclient.utils.module.Module
 import com.amberclient.utils.module.ModuleCategory
+import com.amberclient.utils.module.ModuleSettings
 import com.mojang.blaze3d.systems.RenderSystem
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents
 import net.minecraft.client.MinecraftClient
@@ -18,21 +20,52 @@ import net.minecraft.util.math.Vec3d
 import org.lwjgl.opengl.GL11
 import java.awt.Color
 
-class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory.RENDER) {
+class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory.RENDER), ConfigurableModule {
+
+    enum class TracerOrigin(val displayName: String) {
+        BODY("Body"),
+        OFFSCREEN("Offscreen"),
+        CURSOR("Cursor")
+    }
 
     private var showPlayers = true
     private var showHostileMobs = true
     private var showPassiveMobs = false
-    private var useDistanceColor = true
+    private var useDistanceTransparency = true
     private var maxDistance = 128.0f
     private var lineWidth = 2.0f
+    private var tracerOrigin = TracerOrigin.BODY
 
-    private val playerColor = Color(0, 160, 255)
-    private val hostileColor = Color(255, 0, 0)
-    private val passiveColor = Color(0, 255, 0)
+    private val playerColor = Color(255, 165, 0)
+    private val hostileColor = Color(207, 48, 48)
+    private val passiveColor = Color(207, 48, 48)
     private val defaultColor = Color(255, 255, 255)
 
     private var renderCallback: WorldRenderEvents.AfterEntities? = null
+
+    override fun getSettings(): List<ModuleSettings> {
+        return listOf(
+            ModuleSettings("Show Players", "Show tracers to players", showPlayers),
+            ModuleSettings("Show Hostile Mobs", "Show tracers to hostile mobs", showHostileMobs),
+            ModuleSettings("Show Passive Mobs", "Show tracers to passive mobs", showPassiveMobs),
+            ModuleSettings("Use Distance Transparency", "Make tracers more transparent with distance", useDistanceTransparency),
+            ModuleSettings("Max Distance", "Maximum distance for tracers", maxDistance.toDouble(), 1.0, 512.0, 1.0),
+            ModuleSettings("Line Width", "Width of tracer lines", lineWidth.toDouble(), 0.5, 10.0, 0.1),
+            ModuleSettings("Tracer Origin", "Where tracers start from (cursor doesn't work)", tracerOrigin)
+        )
+    }
+
+    override fun onSettingChanged(setting: ModuleSettings) {
+        when (setting.name) {
+            "Show Players" -> showPlayers = setting.getBooleanValue()
+            "Show Hostile Mobs" -> showHostileMobs = setting.getBooleanValue()
+            "Show Passive Mobs" -> showPassiveMobs = setting.getBooleanValue()
+            "Use Distance Transparency" -> useDistanceTransparency = setting.getBooleanValue()
+            "Max Distance" -> maxDistance = setting.getDoubleValue().toFloat()
+            "Line Width" -> lineWidth = setting.getDoubleValue().toFloat()
+            "Tracer Origin" -> tracerOrigin = setting.getEnumValue<TracerOrigin>()
+        }
+    }
 
     override fun onEnable() {
         renderCallback = WorldRenderEvents.AfterEntities { context ->
@@ -74,24 +107,15 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         GL11.glEnable(GL11.GL_LINE_SMOOTH)
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST)
 
-        val playerPos = Vec3d(
-            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderX, player.x),
-            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderY, player.y),
-            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderZ, player.z)
-        )
-        val startPos = Vec3d(
-            playerPos.x - cameraPos.x + 0.1,
-            playerPos.y + player.height * 0.5 - cameraPos.y,
-            playerPos.z - cameraPos.z + 0.1
-        )
-
+        val startPos = getTracerStartPosition(player, camera, tickDelta)
 
         val tessellator = Tessellator.getInstance()
         val bufferBuilder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR)
 
         entities.forEach { entity ->
             if (entity is LivingEntity && entity != player) {
-                val color = getEntityColor(entity, player.distanceTo(entity))
+                val distance = player.distanceTo(entity)
+                val color = getEntityColor(entity, distance)
                 val entityPos = getInterpolatedEntityPosition(entity, tickDelta)
 
                 val entityCenter = Vec3d(
@@ -115,17 +139,40 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         matrixStack?.pop()
     }
 
+    private fun getTracerStartPosition(player: PlayerEntity, camera: net.minecraft.client.render.Camera, tickDelta: Float): Vec3d {
+        val cameraPos = camera.pos
+
+        return when (tracerOrigin) {
+            TracerOrigin.BODY -> {
+                val playerPos = Vec3d(
+                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderX, player.x),
+                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderY, player.y),
+                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderZ, player.z)
+                )
+                Vec3d(
+                    playerPos.x - cameraPos.x + 0.1,
+                    playerPos.y + player.height * 0.5 - cameraPos.y,
+                    playerPos.z - cameraPos.z + 0.1
+                )
+            }
+            TracerOrigin.OFFSCREEN -> {
+                Vec3d(0.0, -500.0, 0.0)
+            }
+            TracerOrigin.CURSOR -> {
+                Vec3d(0.0, 0.0, 0.0)
+            }
+        }
+    }
+
     private fun drawLine(bufferBuilder: BufferBuilder, start: Vec3d, end: Vec3d, color: Color) {
         val red = color.red / 255.0f
         val green = color.green / 255.0f
         val blue = color.blue / 255.0f
         val alpha = color.alpha / 255.0f
 
-        // Point de départ
         bufferBuilder.vertex(start.x.toFloat(), start.y.toFloat(), start.z.toFloat())
             .color(red, green, blue, alpha)
 
-        // Point d'arrivée
         bufferBuilder.vertex(end.x.toFloat(), end.y.toFloat(), end.z.toFloat())
             .color(red, green, blue, alpha)
     }
@@ -139,16 +186,20 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     }
 
     private fun getEntityColor(entity: LivingEntity, distance: Float): Color {
-        return when {
-            useDistanceColor -> {
-                val normalizedDistance = (distance / maxDistance).coerceIn(0.0f, 1.0f)
-                val hue = (1.0f - normalizedDistance) * 120.0f / 360.0f
-                Color(Color.HSBtoRGB(hue, 1.0f, 1.0f))
-            }
+        val baseColor = when {
             entity is PlayerEntity -> playerColor
             entity is Monster -> hostileColor
             entity is PassiveEntity -> passiveColor
             else -> defaultColor
+        }
+
+        return if (useDistanceTransparency) {
+            val normalizedDistance = (distance / maxDistance).coerceIn(0.0f, 1.0f)
+            val alpha = (255 * (1.0f - normalizedDistance * 0.8f)).toInt().coerceIn(51, 255)
+
+            Color(baseColor.red, baseColor.green, baseColor.blue, alpha)
+        } else {
+            baseColor
         }
     }
 
@@ -160,11 +211,4 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
             else -> false
         }
     }
-
-    fun setShowPlayers(show: Boolean) { showPlayers = show }
-    fun setShowHostileMobs(show: Boolean) { showHostileMobs = show }
-    fun setShowPassiveMobs(show: Boolean) { showPassiveMobs = show }
-    fun setUseDistanceColor(use: Boolean) { useDistanceColor = use }
-    fun setMaxDistance(distance: Float) { maxDistance = distance.coerceIn(1.0f, 512.0f) }
-    fun setLineWidth(width: Float) { lineWidth = width.coerceIn(0.5f, 10.0f) }
 }

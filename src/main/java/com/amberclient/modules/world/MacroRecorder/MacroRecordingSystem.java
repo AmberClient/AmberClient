@@ -1,6 +1,6 @@
 package com.amberclient.modules.world.MacroRecorder;
 
-import com.amberclient.gui.MacroControllerGUI;
+import com.amberclient.screens.MacroControllerGUI;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;

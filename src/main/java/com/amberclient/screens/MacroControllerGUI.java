@@ -1,4 +1,4 @@
-package com.amberclient.gui;
+package com.amberclient.screens;
 
 //
 // TODO: Don't mind this mess, imma clean this later
