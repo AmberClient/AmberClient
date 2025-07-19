@@ -4,7 +4,11 @@
   "package": "com.amberclient.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "accessors.EntityTrackingSectionAccessor",
     "accessors.PlayerMoveC2SPacketAccessor",
+    "accessors.SectionedEntityCacheAccessor",
+    "accessors.SimpleEntityLookupAccessor",
+    "accessors.WorldAccessor",
     "client.core.ClientConnectionMixin",
     "client.core.MinecraftClientMixin",
     "client.rendering.EntityHitboxMixin",

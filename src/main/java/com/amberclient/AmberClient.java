@@ -1,8 +1,8 @@
 package com.amberclient;
 
 import com.amberclient.modules.world.MacroRecorder.MacroRecordingSystem;
-import com.amberclient.screens.HudRenderer;
-import com.amberclient.screens.ClickGUI;
+import com.amberclient.gui.HudRenderer;
+import com.amberclient.gui.ClickGUI;
 import com.amberclient.commands.AmberCommand;
 import com.amberclient.utils.font.FontUtil;
 import com.amberclient.utils.input.keybinds.KeybindsManager;
@@ -29,6 +29,10 @@ public class AmberClient implements ModInitializer {
 
     private static boolean hudLayerRegistered = false;
     private int discordUpdateTicker = 0;
+
+    public static Identifier identifier(String path) {
+        return Identifier.of(MOD_ID, path);
+    }
 
     @Override
     public void onInitialize() {

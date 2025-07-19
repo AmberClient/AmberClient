@@ -98,7 +98,6 @@ public class EventManager {
             } else if (paramType.getSimpleName().contains("PostVelocity")) {
                 postVelocityListeners.add(new MethodListener(obj, method, annotation));
             }
-            // Ajout des nouveaux types d'événements
             else if (paramType == PacketEvent.Send.class || paramType.getSimpleName().contains("PacketEvent")) {
                 packetSendListeners.add(new MethodListener(obj, method, annotation));
             } else if (paramType == SendMovementPacketsEvent.Pre.class || paramType.getSimpleName().contains("SendMovementPackets")) {
@@ -202,102 +201,102 @@ public class EventManager {
                                   EventListener annotation) implements PreMotionListener, PostMotionListener, PacketReceiveListener, PreVelocityListener, PostVelocityListener, PacketSendListener, SendMovementPacketsListener {
 
         public int getPriority() {
-                return annotation.priority();
-            }
+            return annotation.priority();
+        }
 
-            public boolean receiveCancelled() {
-                return annotation.receiveCancelled();
-            }
+        public boolean receiveCancelled() {
+            return annotation.receiveCancelled();
+        }
 
-            public void invokePreMotion() {
-                try {
-                    method.invoke(owner);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PreMotion event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokePostMotion() {
-                try {
-                    method.invoke(owner);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PostMotion event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokePacketReceive(Packet<?> packet) {
-                try {
-                    method.invoke(owner, packet);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PacketReceive event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokePreVelocity(PreVelocityEvent event) {
-                try {
-                    method.invoke(owner, event);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PreVelocity event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokePostVelocity(PostVelocityEvent event) {
-                try {
-                    method.invoke(owner, event);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PostVelocity event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokePacketSend(PacketEvent.Send event) {
-                try {
-                    method.invoke(owner, event);
-                } catch (Exception e) {
-                    System.err.println("Error invoking PacketSend event handler: " + e.getMessage());
-                }
-            }
-
-            public void invokeSendMovementPackets(SendMovementPacketsEvent.Pre event) {
-                try {
-                    method.invoke(owner, event);
-                } catch (Exception e) {
-                    System.err.println("Error invoking SendMovementPackets event handler: " + e.getMessage());
-                }
-            }
-
-            @Override
-            public void onPreMotion() {
-                invokePreMotion();
-            }
-
-            @Override
-            public void onPostMotion() {
-                invokePostMotion();
-            }
-
-            @Override
-            public void onPacketReceive(Packet<?> packet) {
-                invokePacketReceive(packet);
-            }
-
-            @Override
-            public void onPreVelocity(PreVelocityEvent event) {
-                invokePreVelocity(event);
-            }
-
-            @Override
-            public void onPostVelocity(PostVelocityEvent event) {
-                invokePostVelocity(event);
-            }
-
-            @Override
-            public void onPacketSend(PacketEvent.Send event) {
-                invokePacketSend(event);
-            }
-
-            @Override
-            public void onSendMovementPackets(SendMovementPacketsEvent.Pre event) {
-                invokeSendMovementPackets(event);
+        public void invokePreMotion() {
+            try {
+                method.invoke(owner);
+            } catch (Exception e) {
+                System.err.println("Error invoking PreMotion event handler: " + e.getMessage());
             }
         }
+
+        public void invokePostMotion() {
+            try {
+                method.invoke(owner);
+            } catch (Exception e) {
+                System.err.println("Error invoking PostMotion event handler: " + e.getMessage());
+            }
+        }
+
+        public void invokePacketReceive(Packet<?> packet) {
+            try {
+                method.invoke(owner, packet);
+            } catch (Exception e) {
+                System.err.println("Error invoking PacketReceive event handler: " + e.getMessage());
+            }
+        }
+
+        public void invokePreVelocity(PreVelocityEvent event) {
+            try {
+                method.invoke(owner, event);
+            } catch (Exception e) {
+                System.err.println("Error invoking PreVelocity event handler: " + e.getMessage());
+            }
+        }
+
+        public void invokePostVelocity(PostVelocityEvent event) {
+            try {
+                method.invoke(owner, event);
+            } catch (Exception e) {
+                System.err.println("Error invoking PostVelocity event handler: " + e.getMessage());
+            }
+        }
+
+        public void invokePacketSend(PacketEvent.Send event) {
+            try {
+                method.invoke(owner, event);
+            } catch (Exception e) {
+                System.err.println("Error invoking PacketSend event handler: " + e.getMessage());
+            }
+        }
+
+        public void invokeSendMovementPackets(SendMovementPacketsEvent.Pre event) {
+            try {
+                method.invoke(owner, event);
+            } catch (Exception e) {
+                System.err.println("Error invoking SendMovementPackets event handler: " + e.getMessage());
+            }
+        }
+
+        @Override
+        public void onPreMotion() {
+            invokePreMotion();
+        }
+
+        @Override
+        public void onPostMotion() {
+            invokePostMotion();
+        }
+
+        @Override
+        public void onPacketReceive(Packet<?> packet) {
+            invokePacketReceive(packet);
+        }
+
+        @Override
+        public void onPreVelocity(PreVelocityEvent event) {
+            invokePreVelocity(event);
+        }
+
+        @Override
+        public void onPostVelocity(PostVelocityEvent event) {
+            invokePostVelocity(event);
+        }
+
+        @Override
+        public void onPacketSend(PacketEvent.Send event) {
+            invokePacketSend(event);
+        }
+
+        @Override
+        public void onSendMovementPackets(SendMovementPacketsEvent.Pre event) {
+            invokeSendMovementPackets(event);
+        }
+    }
 }
