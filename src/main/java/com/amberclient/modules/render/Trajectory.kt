@@ -19,14 +19,11 @@ import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.*
 import net.minecraft.world.RaycastContext
 import org.lwjgl.opengl.GL11
-import java.awt.Color
 
 class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles", ModuleCategory.RENDER), ConfigurableModule {
 
-    enum class LineOrigin() {
-        LEFT(),
-        AUTO(),
-        RIGHT()
+    enum class LineOrigin {
+        LEFT, AUTO, RIGHT
     }
 
     private var lineVisibility = true
@@ -40,11 +37,25 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
     private val simpleItems = setOf(Items.SNOWBALL, Items.ENDER_PEARL, Items.EGG)
     private val complexItems = setOf(Items.BOW, Items.CROSSBOW)
 
-    private val trajectoryColor = Color(255, 0, 0, 150)
-    private val hitBoxColor = Color(255, 255, 0, 100)
-    private val approxBoxColor = Color(255, 165, 0, 80)
+    private val trajectoryColor = ColorCache(255, 0, 0, 150)
+    private val hitBoxColor = ColorCache(255, 255, 0, 100)
+    private val approxBoxColor = ColorCache(255, 165, 0, 80)
 
     private var renderCallback: WorldRenderEvents.AfterEntities? = null
+    private var tempEntity: SnowballEntity? = null
+
+    private data class ColorCache(val r: Float, val g: Float, val b: Float, val a: Float) {
+        constructor(r: Int, g: Int, b: Int, a: Int) : this(
+            r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f
+        )
+    }
+
+    private data class TrajectoryParams(
+        val speed: Float,
+        val gravity: Float,
+        val drag: Float,
+        val mainHand: Boolean
+    )
 
     override fun getSettings(): List<ModuleSettings> {
         return listOf(
@@ -52,7 +63,7 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
             ModuleSettings("Box Visibility", "Show the hit box", boxVisibility),
             ModuleSettings("Approx Box Visibility", "Show the approximate hit box", approxBoxVisibility),
             ModuleSettings("Max Iterations", "Maximum calculation iterations", maxIterations.toDouble(), 50.0, 200.0, 10.0),
-            ModuleSettings("Line Origin", "Origin of the trajectory line", lineOrigin),
+            ModuleSettings("Line Origin", "Origin of the trajectory line", lineOrigin)
         )
     }
 
@@ -91,11 +102,9 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         if (!mainHand && !offHand) return
 
         val currentStack = if (mainHand) mainHandStack else offHandStack
-
         val trajectoryParams = calculateTrajectoryParams(player, currentStack.item, mainHand) ?: return
 
         matrixStack?.push()
-
         val cameraPos = camera.pos
         matrixStack?.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z)
 
@@ -104,54 +113,31 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         val tessellator = Tessellator.getInstance()
         val bufferBuilder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR)
 
-        renderTrajectoryPath(
-            bufferBuilder,
-            player,
-            world,
-            trajectoryParams,
-            cameraPos,
-            mainHand
-        )
+        renderTrajectoryPath(bufferBuilder, player, world, trajectoryParams, cameraPos, mainHand)
 
         BufferRenderer.drawWithGlobalProgram(bufferBuilder.end())
-
         resetRendering()
         matrixStack?.pop()
     }
 
-    private fun isProjectileItem(item: Item): Boolean {
-        return simpleItems.contains(item) || (complexItems.contains(item) && arrowTrajectory)
-    }
+    private fun isProjectileItem(item: Item): Boolean =
+        item in simpleItems || (item in complexItems && arrowTrajectory)
 
     private fun calculateTrajectoryParams(player: PlayerEntity, item: Item, mainHand: Boolean): TrajectoryParams? {
-        val speed: Float
-        val gravity: Float
-        val drag: Float
-
-        when {
-            simpleItems.contains(item) -> {
-                speed = 1.5f
-                gravity = 0.03f
-                drag = 0.99f
-            }
-            complexItems.contains(item) -> {
-                if (!arrowTrajectory) return null
+        return when {
+            item in simpleItems -> TrajectoryParams(1.5f, 0.03f, 0.99f, mainHand)
+            item in complexItems && arrowTrajectory -> {
                 val bowMultiplier = calculateBowPower(player)
-                speed = bowMultiplier * 3.0f
-                gravity = 0.05f
-                drag = 0.99f
+                TrajectoryParams(bowMultiplier * 3.0f, 0.05f, 0.99f, mainHand)
             }
-            else -> return null
+            else -> null
         }
-
-        return TrajectoryParams(speed, gravity, drag, mainHand)
     }
 
     private fun calculateBowPower(player: PlayerEntity): Float {
         val useTime = 72000 - player.itemUseTimeLeft
-        var power = useTime / 20.0f
-        power = (power * power + power * 2.0f) / 3.0f
-        return power.coerceAtMost(1.0f)
+        val power = useTime / 20.0f
+        return ((power * power + power * 2.0f) / 3.0f).coerceAtMost(1.0f)
     }
 
     private fun renderTrajectoryPath(
@@ -162,56 +148,50 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         cameraPos: Vec3d,
         usingMainHand: Boolean
     ) {
+        if (tempEntity == null) {
+            tempEntity = SnowballEntity(world, player, ItemStack(Items.SNOWBALL))
+        }
+
         var entityPosition = getStartPosition(player, usingMainHand)
         var entityVelocity = getInitialVelocity(player, params.speed)
-
-        val tempEntity = SnowballEntity(world, player, ItemStack(Items.SNOWBALL))
-
         var prevPosition = entityPosition
 
-        var iterations = 0
-        while (iterations < maxIterations) {
+        val dragDouble = params.drag.toDouble()
+        val gravityDouble = params.gravity.toDouble()
+
+        repeat(maxIterations) { _ ->
+            val nextPosition = entityPosition.add(entityVelocity)
+
             val hitResult = world.raycast(
                 RaycastContext(
                     entityPosition,
-                    entityPosition.add(entityVelocity),
+                    nextPosition,
                     RaycastContext.ShapeType.OUTLINE,
                     RaycastContext.FluidHandling.NONE,
-                    tempEntity
+                    tempEntity!!
                 )
             )
 
             if (hitResult.type != HitResult.Type.MISS) {
                 val hitPos = hitResult.pos
-
                 if (lineVisibility) {
-                    drawTrajectoryLine(
-                        bufferBuilder,
-                        prevPosition.subtract(cameraPos),
-                        hitPos.subtract(cameraPos),
-                        trajectoryColor
-                    )
+                    addLineVertices(bufferBuilder, prevPosition, hitPos, cameraPos, trajectoryColor)
                 }
-
                 renderHitBoxes(bufferBuilder, hitPos, cameraPos, player.pos.distanceTo(hitPos))
-                break
+                return
             }
 
             if (lineVisibility) {
-                drawTrajectoryLine(
-                    bufferBuilder,
-                    prevPosition.subtract(cameraPos),
-                    entityPosition.subtract(cameraPos),
-                    trajectoryColor
-                )
+                addLineVertices(bufferBuilder, prevPosition, entityPosition, cameraPos, trajectoryColor)
             }
 
             prevPosition = entityPosition
-            entityPosition = entityPosition.add(entityVelocity)
-            entityVelocity = entityVelocity.multiply(params.drag.toDouble())
-            entityVelocity = Vec3d(entityVelocity.x, entityVelocity.y - params.gravity, entityVelocity.z)
-
-            iterations++
+            entityPosition = nextPosition
+            entityVelocity = Vec3d(
+                entityVelocity.x * dragDouble,
+                entityVelocity.y * dragDouble - gravityDouble,
+                entityVelocity.z * dragDouble
+            )
         }
     }
 
@@ -219,26 +199,29 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         val playerPos = Vec3d(player.x, player.y + 1.5, player.z)
 
         val playerSide = when (lineOrigin) {
-            LineOrigin.LEFT -> -1
-            LineOrigin.RIGHT -> 1
+            LineOrigin.LEFT -> 1
+            LineOrigin.RIGHT -> -1
             LineOrigin.AUTO -> if (usingMainHand) 1 else -1
         }
 
         val adjustedSide = if (player.mainArm.id == 0) -playerSide else playerSide
+        val yawRadians = Math.toRadians((player.yaw + 90).toDouble())
 
-        val offsetX = adjustedSide * 0.3 * MathHelper.sin(Math.toRadians((player.yaw + 90).toDouble()).toFloat())
-        val offsetZ = adjustedSide * 0.3 * MathHelper.cos(Math.toRadians((player.yaw + 90).toDouble()).toFloat())
+        val offsetX = adjustedSide * 0.3 * MathHelper.sin(yawRadians.toFloat())
+        val offsetZ = adjustedSide * 0.3 * MathHelper.cos(yawRadians.toFloat())
 
         return playerPos.add(offsetX, 0.0, offsetZ)
     }
 
     private fun getInitialVelocity(player: PlayerEntity, speed: Float): Vec3d {
-        val pitch = player.pitch
-        val yaw = player.yaw
+        val pitchRad = player.pitch * 0.017453292f
+        val yawRad = player.yaw * 0.017453292f
 
-        val entityVelX = -MathHelper.sin(yaw * 0.017453292f) * MathHelper.cos(pitch * 0.017453292f)
-        val entityVelY = -MathHelper.sin(pitch * 0.017453292f)
-        val entityVelZ = MathHelper.cos(yaw * 0.017453292f) * MathHelper.cos(pitch * 0.017453292f)
+        val cosPitch = MathHelper.cos(pitchRad)
+
+        val entityVelX = -MathHelper.sin(yawRad) * cosPitch
+        val entityVelY = -MathHelper.sin(pitchRad)
+        val entityVelZ = MathHelper.cos(yawRad) * cosPitch
 
         return Vec3d(entityVelX.toDouble(), entityVelY.toDouble(), entityVelZ.toDouble())
             .normalize()
@@ -249,94 +232,82 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         val relativePos = hitPos.subtract(cameraPos)
 
         if (boxVisibility) {
-            val defaultSize = 0.5
-            drawBox(
-                bufferBuilder,
-                relativePos.x - defaultSize,
-                relativePos.y - defaultSize,
-                relativePos.z - defaultSize,
-                relativePos.x + defaultSize,
-                relativePos.y + defaultSize,
-                relativePos.z + defaultSize,
-                hitBoxColor
-            )
+            addBoxVertices(bufferBuilder, relativePos, 0.5, hitBoxColor)
         }
 
         if (approxBoxVisibility) {
             val approxSize = if (distance > 30) distance / 70 else 0.5
-            drawBox(
-                bufferBuilder,
-                relativePos.x - approxSize,
-                relativePos.y - approxSize,
-                relativePos.z - approxSize,
-                relativePos.x + approxSize,
-                relativePos.y + approxSize,
-                relativePos.z + approxSize,
-                approxBoxColor
-            )
+            addBoxVertices(bufferBuilder, relativePos, approxSize, approxBoxColor)
         }
     }
 
-    private fun drawTrajectoryLine(bufferBuilder: BufferBuilder, start: Vec3d, end: Vec3d, color: Color) {
-        val red = color.red / 255.0f
-        val green = color.green / 255.0f
-        val blue = color.blue / 255.0f
-        val alpha = color.alpha / 255.0f
+    private fun addLineVertices(
+        bufferBuilder: BufferBuilder,
+        start: Vec3d,
+        end: Vec3d,
+        cameraPos: Vec3d,
+        color: ColorCache
+    ) {
+        val startRel = start.subtract(cameraPos)
+        val endRel = end.subtract(cameraPos)
 
-        bufferBuilder.vertex(start.x.toFloat(), start.y.toFloat(), start.z.toFloat())
-            .color(red, green, blue, alpha)
-
-        bufferBuilder.vertex(end.x.toFloat(), end.y.toFloat(), end.z.toFloat())
-            .color(red, green, blue, alpha)
+        bufferBuilder.vertex(startRel.x.toFloat(), startRel.y.toFloat(), startRel.z.toFloat())
+            .color(color.r, color.g, color.b, color.a)
+        bufferBuilder.vertex(endRel.x.toFloat(), endRel.y.toFloat(), endRel.z.toFloat())
+            .color(color.r, color.g, color.b, color.a)
     }
 
-    private fun drawBox(
+    private fun addBoxVertices(
         bufferBuilder: BufferBuilder,
-        x1: Double, y1: Double, z1: Double,
-        x2: Double, y2: Double, z2: Double,
-        color: Color
+        center: Vec3d,
+        size: Double,
+        color: ColorCache
     ) {
-        val red = color.red / 255.0f
-        val green = color.green / 255.0f
-        val blue = color.blue / 255.0f
-        val alpha = color.alpha / 255.0f
+        val x1 = (center.x - size).toFloat()
+        val y1 = (center.y - size).toFloat()
+        val z1 = (center.z - size).toFloat()
+        val x2 = (center.x + size).toFloat()
+        val y2 = (center.y + size).toFloat()
+        val z2 = (center.z + size).toFloat()
 
-        val fx1 = x1.toFloat()
-        val fy1 = y1.toFloat()
-        val fz1 = z1.toFloat()
-        val fx2 = x2.toFloat()
-        val fy2 = y2.toFloat()
-        val fz2 = z2.toFloat()
+        val r = color.r
+        val g = color.g
+        val b = color.b
+        val a = color.a
 
-        // Bottom side
-        bufferBuilder.vertex(fx1, fy1, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy1, fz1).color(red, green, blue, alpha)
-
-        // Top side
-        bufferBuilder.vertex(fx1, fy2, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy2, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy2, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy2, fz1).color(red, green, blue, alpha)
-
+        // Bottom face
+        addQuadEdges(bufferBuilder, x1, y1, z1, x2, z2, r, g, b, a)
+        // Top face
+        addQuadEdges(bufferBuilder, x1, y2, z1, x2, z2, r, g, b, a)
         // Vertical edges
-        bufferBuilder.vertex(fx1, fy1, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy2, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz1).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx2, fy2, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy1, fz2).color(red, green, blue, alpha)
-        bufferBuilder.vertex(fx1, fy2, fz2).color(red, green, blue, alpha)
+        addVerticalEdges(bufferBuilder, x1, y1, z1, x2, y2, z2, r, g, b, a)
+    }
+
+    private fun addQuadEdges(
+        bufferBuilder: BufferBuilder,
+        x1: Float, y: Float, z1: Float,
+        x2: Float, z2: Float,
+        r: Float, g: Float, b: Float, a: Float
+    ) {
+        val vertices = floatArrayOf(x1, y, z1, x2, y, z1, x2, y, z2, x1, y, z2)
+        for (i in vertices.indices step 3) {
+            val nextI = if (i + 3 < vertices.size) i + 3 else 0
+            bufferBuilder.vertex(vertices[i], vertices[i + 1], vertices[i + 2]).color(r, g, b, a)
+            bufferBuilder.vertex(vertices[nextI], vertices[nextI + 1], vertices[nextI + 2]).color(r, g, b, a)
+        }
+    }
+
+    private fun addVerticalEdges(
+        bufferBuilder: BufferBuilder,
+        x1: Float, y1: Float, z1: Float,
+        x2: Float, y2: Float, z2: Float,
+        r: Float, g: Float, b: Float, a: Float
+    ) {
+        val corners = floatArrayOf(x1, z1, x2, z1, x2, z2, x1, z2)
+        for (i in corners.indices step 2) {
+            bufferBuilder.vertex(corners[i], y1, corners[i + 1]).color(r, g, b, a)
+            bufferBuilder.vertex(corners[i], y2, corners[i + 1]).color(r, g, b, a)
+        }
     }
 
     private fun setupRendering() {
@@ -358,11 +329,4 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         RenderSystem.disableBlend()
         RenderSystem.lineWidth(1.0f)
     }
-
-    private data class TrajectoryParams(
-        val speed: Float,
-        val gravity: Float,
-        val drag: Float,
-        val mainHand: Boolean
-    )
 }
