@@ -6,7 +6,6 @@ import com.amberclient.utils.module.ModuleCategory
 import com.amberclient.utils.module.ModuleSettings
 import com.mojang.blaze3d.systems.ProjectionType
 import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.systems.VertexSorter
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.ShaderProgramKeys
@@ -20,7 +19,6 @@ import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.util.math.MathHelper
 import net.minecraft.util.math.Vec3d
 import org.joml.Matrix4f
-import org.joml.Vector3f
 import org.joml.Vector4f
 import org.lwjgl.opengl.GL11
 import java.awt.Color
@@ -240,7 +238,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         }
     }
 
-    private fun worldToScreen(worldPos: Vec3d, camera: net.minecraft.client.render.Camera, screenWidth: Double, screenHeight: Double, modelViewMatrix: Matrix4f, projectionMatrix: Matrix4f): Vec3d? {
+    private fun worldToScreen(worldPos: Vec3d, camera: Camera, screenWidth: Double, screenHeight: Double, modelViewMatrix: Matrix4f, projectionMatrix: Matrix4f): Vec3d? {
         val cameraPos = camera.pos
         val relativePos = worldPos.subtract(cameraPos)
 
@@ -303,16 +301,16 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     }
 
     private fun getEntityColor(entity: LivingEntity, distance: Float): Color {
-        val baseColor = when {
-            entity is PlayerEntity -> playerColor
-            entity is Monster -> hostileColor
-            entity is PassiveEntity -> passiveColor
+        val baseColor = when (entity) {
+            is PlayerEntity -> playerColor
+            is Monster -> hostileColor
+            is PassiveEntity -> passiveColor
             else -> defaultColor
         }
 
         return if (useDistanceTransparency) {
             val normalizedDistance = (distance / maxDistance).coerceIn(0.0f, 1.0f)
-            val alpha = (255 * (1.0f - normalizedDistance * 0.8f)).toInt().coerceIn(51, 255)
+            val alpha = (255 * normalizedDistance).toInt().coerceIn(51, 255)
 
             Color(baseColor.red, baseColor.green, baseColor.blue, alpha)
         } else {

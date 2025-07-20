@@ -22,7 +22,9 @@
       <w>murderfinder</w>
       <w>nbttooltip</w>
       <w>nofall</w>
+      <w>ortho</w>
       <w>safewalk</w>
+      <w>tessellator</w>
       <w>unbindcmd</w>
     </words>
   </dictionary>
