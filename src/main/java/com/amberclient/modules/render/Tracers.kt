@@ -34,7 +34,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     private var showPlayers = true
     private var showHostileMobs = true
     private var showPassiveMobs = false
-    private var useDistanceTransparency = true
+    private var useDistanceTransparency = false
     private var maxDistance = 128.0f
     private var lineWidth = 2.0f
     private var tracerOrigin = TracerOrigin.BODY
@@ -53,7 +53,6 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
             ModuleSettings("Show Passive Mobs", "Show tracers to passive mobs", showPassiveMobs),
             ModuleSettings("Use Distance Transparency", "Make tracers more transparent with distance", useDistanceTransparency),
             ModuleSettings("Max Distance", "Maximum distance for tracers", maxDistance.toDouble(), 1.0, 512.0, 1.0),
-            ModuleSettings("Line Width", "Width of tracer lines", lineWidth.toDouble(), 0.5, 10.0, 0.1),
             ModuleSettings("Tracer Origin", "Where tracers start from", tracerOrigin)
         )
     }
@@ -65,22 +64,19 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
             "Show Passive Mobs" -> showPassiveMobs = setting.getBooleanValue()
             "Use Distance Transparency" -> useDistanceTransparency = setting.getBooleanValue()
             "Max Distance" -> maxDistance = setting.getDoubleValue().toFloat()
-            "Line Width" -> lineWidth = setting.getDoubleValue().toFloat()
             "Tracer Origin" -> tracerOrigin = setting.getEnumValue<TracerOrigin>()
         }
     }
 
     override fun onEnable() {
-        renderCallback = WorldRenderEvents.AfterEntities { context ->
-            if (client.player != null && client.world != null) {
-                renderTracers(context.matrixStack(), context.tickCounter().getTickDelta(true))
+        if (renderCallback == null) {
+            renderCallback = WorldRenderEvents.AfterEntities { context ->
+                if (enabled && client.player != null && client.world != null) {
+                    renderTracers(context.matrixStack(), context.tickCounter().getTickDelta(true))
+                }
             }
+            WorldRenderEvents.AFTER_ENTITIES.register(renderCallback!!)
         }
-        WorldRenderEvents.AFTER_ENTITIES.register(renderCallback!!)
-    }
-
-    override fun onDisable() {
-        renderCallback = null
     }
 
     private fun renderTracers(matrixStack: MatrixStack?, tickDelta: Float) {
@@ -101,7 +97,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         }
     }
 
-    private fun render3DTracers(matrixStack: MatrixStack?, player: PlayerEntity, camera: net.minecraft.client.render.Camera, entities: List<Entity>, tickDelta: Float) {
+    private fun render3DTracers(matrixStack: MatrixStack?, player: PlayerEntity, camera: Camera, entities: List<Entity>, tickDelta: Float) {
         matrixStack?.push()
 
         val cameraPos = camera.pos
