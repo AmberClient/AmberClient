@@ -1,5 +1,6 @@
 ### Official website: https://amberclient.vercel.app/
 ### Roadmap: [Check it on Trello](https://trello.com/b/DKUyIJQ7/amber-client)
+<i>Join the [Discord server](https://discord.gg/jwgSKxWqrn) to test new features before they're released!</i>
 
 ---
 
