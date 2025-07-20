@@ -4,7 +4,9 @@ import com.amberclient.utils.module.ConfigurableModule
 import com.amberclient.utils.module.Module
 import com.amberclient.utils.module.ModuleCategory
 import com.amberclient.utils.module.ModuleSettings
+import com.mojang.blaze3d.systems.ProjectionType
 import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.systems.VertexSorter
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.ShaderProgramKeys
@@ -17,6 +19,9 @@ import net.minecraft.entity.passive.PassiveEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.util.math.MathHelper
 import net.minecraft.util.math.Vec3d
+import org.joml.Matrix4f
+import org.joml.Vector3f
+import org.joml.Vector4f
 import org.lwjgl.opengl.GL11
 import java.awt.Color
 
@@ -51,7 +56,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
             ModuleSettings("Use Distance Transparency", "Make tracers more transparent with distance", useDistanceTransparency),
             ModuleSettings("Max Distance", "Maximum distance for tracers", maxDistance.toDouble(), 1.0, 512.0, 1.0),
             ModuleSettings("Line Width", "Width of tracer lines", lineWidth.toDouble(), 0.5, 10.0, 0.1),
-            ModuleSettings("Tracer Origin", "Where tracers start from (cursor doesn't work)", tracerOrigin)
+            ModuleSettings("Tracer Origin", "Where tracers start from", tracerOrigin)
         )
     }
 
@@ -92,6 +97,13 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
 
         if (entities.isEmpty()) return
 
+        when (tracerOrigin) {
+            TracerOrigin.BODY -> render3DTracers(matrixStack, player, camera, entities, tickDelta)
+            TracerOrigin.OFFSCREEN, TracerOrigin.CURSOR -> render2DTracers(matrixStack, player, camera, entities, tickDelta)
+        }
+    }
+
+    private fun render3DTracers(matrixStack: MatrixStack?, player: PlayerEntity, camera: net.minecraft.client.render.Camera, entities: List<Entity>, tickDelta: Float) {
         matrixStack?.push()
 
         val cameraPos = camera.pos
@@ -107,7 +119,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         GL11.glEnable(GL11.GL_LINE_SMOOTH)
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST)
 
-        val startPos = getTracerStartPosition(player, camera, tickDelta)
+        val startPos = get3DTracerStartPosition(player, camera, tickDelta)
 
         val tessellator = Tessellator.getInstance()
         val bufferBuilder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR)
@@ -139,29 +151,121 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         matrixStack?.pop()
     }
 
-    private fun getTracerStartPosition(player: PlayerEntity, camera: net.minecraft.client.render.Camera, tickDelta: Float): Vec3d {
-        val cameraPos = camera.pos
+    private fun render2DTracers(matrixStack: MatrixStack?, player: PlayerEntity, camera: net.minecraft.client.render.Camera, entities: List<Entity>, tickDelta: Float) {
+        val mc = MinecraftClient.getInstance()
+        val window = mc.window
+        val screenWidth = window.scaledWidth.toDouble()
+        val screenHeight = window.scaledHeight.toDouble()
 
-        return when (tracerOrigin) {
-            TracerOrigin.BODY -> {
-                val playerPos = Vec3d(
-                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderX, player.x),
-                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderY, player.y),
-                    MathHelper.lerp(tickDelta.toDouble(), player.lastRenderZ, player.z)
+        val originalModelView = Matrix4f(RenderSystem.getModelViewMatrix())
+        val originalProjection = Matrix4f(RenderSystem.getProjectionMatrix())
+
+        matrixStack?.push()
+        matrixStack?.loadIdentity()
+
+        RenderSystem.enableBlend()
+        RenderSystem.defaultBlendFunc()
+        RenderSystem.disableCull()
+        RenderSystem.disableDepthTest()
+        RenderSystem.lineWidth(lineWidth)
+
+        GL11.glEnable(GL11.GL_LINE_SMOOTH)
+        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST)
+
+        val orthoMatrix = Matrix4f().setOrtho(0.0f, screenWidth.toFloat(), screenHeight.toFloat(), 0.0f, -1000.0f, 1000.0f)
+        RenderSystem.setProjectionMatrix(orthoMatrix, ProjectionType.ORTHOGRAPHIC)
+
+        RenderSystem.getModelViewMatrix().identity()
+
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR)
+
+        val tessellator = Tessellator.getInstance()
+        val bufferBuilder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR)
+
+        val startPos = get2DTracerStartPosition(screenWidth, screenHeight)
+
+        entities.forEach { entity ->
+            if (entity is LivingEntity && entity != player) {
+                val distance = player.distanceTo(entity)
+                val color = getEntityColor(entity, distance)
+                val entityPos = getInterpolatedEntityPosition(entity, tickDelta)
+
+                val entityCenter = Vec3d(
+                    entityPos.x,
+                    entityPos.y + entity.height / 2.0,
+                    entityPos.z
                 )
-                Vec3d(
-                    playerPos.x - cameraPos.x + 0.1,
-                    playerPos.y + player.height * 0.5 - cameraPos.y,
-                    playerPos.z - cameraPos.z + 0.1
-                )
-            }
-            TracerOrigin.OFFSCREEN -> {
-                Vec3d(0.0, -500.0, 0.0)
-            }
-            TracerOrigin.CURSOR -> {
-                Vec3d(0.0, 0.0, 0.0)
+
+                val screenPos = worldToScreen(entityCenter, camera, screenWidth, screenHeight, originalModelView, originalProjection)
+                if (screenPos != null) {
+                    draw2DLine(bufferBuilder, startPos, screenPos, color)
+                }
             }
         }
+
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end())
+
+        RenderSystem.setProjectionMatrix(originalProjection, ProjectionType.PERSPECTIVE)
+        RenderSystem.getModelViewMatrix().set(originalModelView)
+
+        GL11.glDisable(GL11.GL_LINE_SMOOTH)
+        RenderSystem.enableCull()
+        RenderSystem.enableDepthTest()
+        RenderSystem.disableBlend()
+        RenderSystem.lineWidth(1.0f)
+
+        matrixStack?.pop()
+    }
+
+    private fun get3DTracerStartPosition(player: PlayerEntity, camera: net.minecraft.client.render.Camera, tickDelta: Float): Vec3d {
+        val cameraPos = camera.pos
+        val playerPos = Vec3d(
+            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderX, player.x),
+            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderY, player.y),
+            MathHelper.lerp(tickDelta.toDouble(), player.lastRenderZ, player.z)
+        )
+
+        return Vec3d(
+            playerPos.x - cameraPos.x + 0.1,
+            playerPos.y + player.height * 0.5 - cameraPos.y,
+            playerPos.z - cameraPos.z + 0.1
+        )
+    }
+
+    private fun get2DTracerStartPosition(screenWidth: Double, screenHeight: Double): Vec3d {
+        return when (tracerOrigin) {
+            TracerOrigin.OFFSCREEN -> Vec3d(screenWidth / 2.0, 0.0, 0.0)
+            TracerOrigin.CURSOR -> Vec3d(screenWidth / 2.0, screenHeight / 2.0, 0.0)
+            else -> Vec3d(screenWidth / 2.0, 0.0, 0.0)
+        }
+    }
+
+    private fun worldToScreen(worldPos: Vec3d, camera: net.minecraft.client.render.Camera, screenWidth: Double, screenHeight: Double, modelViewMatrix: Matrix4f, projectionMatrix: Matrix4f): Vec3d? {
+        val cameraPos = camera.pos
+        val relativePos = worldPos.subtract(cameraPos)
+
+        val worldVec = Vector4f(
+            relativePos.x.toFloat(),
+            relativePos.y.toFloat(),
+            relativePos.z.toFloat(),
+            1.0f
+        )
+
+        worldVec.mul(modelViewMatrix)
+        worldVec.mul(projectionMatrix)
+
+        if (worldVec.w <= 0.0f) return null
+
+        worldVec.div(worldVec.w)
+
+        val screenX = (worldVec.x + 1.0f) * 0.5f * screenWidth.toFloat()
+        val screenY = (1.0f - worldVec.y) * 0.5f * screenHeight.toFloat()
+
+        if (screenX.isNaN() || screenY.isNaN() || screenX.isInfinite() || screenY.isInfinite()) {
+            return null
+        }
+
+        return Vec3d(screenX.toDouble(), screenY.toDouble(), 0.0)
     }
 
     private fun drawLine(bufferBuilder: BufferBuilder, start: Vec3d, end: Vec3d, color: Color) {
@@ -174,6 +278,19 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
             .color(red, green, blue, alpha)
 
         bufferBuilder.vertex(end.x.toFloat(), end.y.toFloat(), end.z.toFloat())
+            .color(red, green, blue, alpha)
+    }
+
+    private fun draw2DLine(bufferBuilder: BufferBuilder, start: Vec3d, end: Vec3d, color: Color) {
+        val red = color.red / 255.0f
+        val green = color.green / 255.0f
+        val blue = color.blue / 255.0f
+        val alpha = color.alpha / 255.0f
+
+        bufferBuilder.vertex(start.x.toFloat(), start.y.toFloat(), 0.0f)
+            .color(red, green, blue, alpha)
+
+        bufferBuilder.vertex(end.x.toFloat(), end.y.toFloat(), 0.0f)
             .color(red, green, blue, alpha)
     }
 

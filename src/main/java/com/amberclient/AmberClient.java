@@ -30,10 +30,6 @@ public class AmberClient implements ModInitializer {
     private static boolean hudLayerRegistered = false;
     private int discordUpdateTicker = 0;
 
-    public static Identifier identifier(String path) {
-        return Identifier.of(MOD_ID, path);
-    }
-
     @Override
     public void onInitialize() {
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
