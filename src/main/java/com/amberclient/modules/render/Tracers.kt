@@ -31,40 +31,45 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
         CURSOR("Cursor")
     }
 
-    private var showPlayers = true
-    private var showHostileMobs = true
-    private var showPassiveMobs = false
+    enum class TracerMode(val displayName: String) {
+        PLAYERS_ONLY("Players Only"),
+        MOBS_ONLY("Mobs Only"),
+        ALL("All Entities"),
+        NONE("None")
+    }
+
+    private var mode = TracerMode.ALL
     private var useDistanceTransparency = false
     private var maxDistance = 128.0f
     private var lineWidth = 2.0f
     private var tracerOrigin = TracerOrigin.BODY
 
-    private val playerColor = Color(255, 165, 0)
-    private val hostileColor = Color(207, 48, 48)
-    private val passiveColor = Color(207, 48, 48)
+    // Couleurs configurables
+    private var playerColor = Color(255, 165, 0) // Orange par défaut
+    private var mobColor = Color(207, 48, 48)    // Rouge par défaut
     private val defaultColor = Color(255, 255, 255)
 
     private var renderCallback: WorldRenderEvents.AfterEntities? = null
 
     override fun getSettings(): List<ModuleSettings> {
         return listOf(
-            ModuleSettings("Show Players", "Show tracers to players", showPlayers),
-            ModuleSettings("Show Hostile Mobs", "Show tracers to hostile mobs", showHostileMobs),
-            ModuleSettings("Show Passive Mobs", "Show tracers to passive mobs", showPassiveMobs),
+            ModuleSettings("Mode", "What entities to show tracers for", mode),
             ModuleSettings("Use Distance Transparency", "Make tracers more transparent with distance", useDistanceTransparency),
             ModuleSettings("Max Distance", "Maximum distance for tracers", maxDistance.toDouble(), 1.0, 512.0, 1.0),
-            ModuleSettings("Tracer Origin", "Where tracers start from", tracerOrigin)
+            ModuleSettings("Tracer Origin", "Where tracers start from", tracerOrigin),
+            ModuleSettings("Player Color", "Color for player tracers", playerColor),
+            ModuleSettings("Mob Color", "Color for mob tracers", mobColor)
         )
     }
 
     override fun onSettingChanged(setting: ModuleSettings) {
         when (setting.name) {
-            "Show Players" -> showPlayers = setting.getBooleanValue()
-            "Show Hostile Mobs" -> showHostileMobs = setting.getBooleanValue()
-            "Show Passive Mobs" -> showPassiveMobs = setting.getBooleanValue()
+            "Mode" -> mode = setting.getEnumValue<TracerMode>()
             "Use Distance Transparency" -> useDistanceTransparency = setting.getBooleanValue()
             "Max Distance" -> maxDistance = setting.getDoubleValue().toFloat()
             "Tracer Origin" -> tracerOrigin = setting.getEnumValue<TracerOrigin>()
+            "Player Color" -> playerColor = setting.getColorValue()
+            "Mob Color" -> mobColor = setting.getColorValue()
         }
     }
 
@@ -299,8 +304,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     private fun getEntityColor(entity: LivingEntity, distance: Float): Color {
         val baseColor = when (entity) {
             is PlayerEntity -> playerColor
-            is Monster -> hostileColor
-            is PassiveEntity -> passiveColor
+            is Monster, is PassiveEntity -> mobColor
             else -> defaultColor
         }
 
@@ -315,11 +319,18 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     }
 
     private fun shouldRenderTrace(entity: Entity): Boolean {
-        return when {
-            entity is PlayerEntity && entity != client.player -> showPlayers
-            entity is Monster -> showHostileMobs
-            entity is PassiveEntity -> showPassiveMobs
-            else -> false
+        return when (mode) {
+            TracerMode.PLAYERS_ONLY -> entity is PlayerEntity && entity != client.player
+            TracerMode.MOBS_ONLY -> entity is Monster || entity is PassiveEntity
+            TracerMode.ALL -> {
+                when (entity) {
+                    is PlayerEntity -> entity != client.player
+                    is Monster -> true
+                    is PassiveEntity -> true
+                    else -> false
+                }
+            }
+            TracerMode.NONE -> false
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.amberclient.utils.module;
 
+import java.awt.Color;
 import java.util.Set;
 
 public class ModuleSettings {
@@ -9,7 +10,8 @@ public class ModuleSettings {
         DOUBLE,
         STRING,
         ENUM,
-        SET
+        SET,
+        COLOR
     }
 
     private final String name;
@@ -85,6 +87,32 @@ public class ModuleSettings {
         this.type = SettingType.SET;
         this.value = defaultValue;
         this.defaultValue = defaultValue;
+    }
+
+    // Color constructor with Color object
+    public ModuleSettings(String name, String description, Color defaultValue) {
+        this.name = name;
+        this.description = description;
+        this.type = SettingType.COLOR;
+        this.value = defaultValue;
+        this.defaultValue = defaultValue;
+    }
+
+    // Static factory methods for color creation to avoid constructor conflicts
+    public static ModuleSettings createColorSetting(String name, String description, int red, int green, int blue) {
+        return new ModuleSettings(name, description, new Color(red, green, blue));
+    }
+
+    public static ModuleSettings createColorSetting(String name, String description, int red, int green, int blue, int alpha) {
+        return new ModuleSettings(name, description, new Color(red, green, blue, alpha));
+    }
+
+    public static ModuleSettings createColorSettingFromHex(String name, String description, int hexColor) {
+        return new ModuleSettings(name, description, new Color(hexColor));
+    }
+
+    public static ModuleSettings createColorSettingFromHex(String name, String description, int hexColor, boolean hasAlpha) {
+        return new ModuleSettings(name, description, new Color(hexColor, hasAlpha));
     }
 
     public boolean isEnabled() {
@@ -169,6 +197,66 @@ public class ModuleSettings {
             return (Set<T>) value;
         }
         throw new IllegalStateException("Setting is not a set");
+    }
+
+    public Color getColorValue() {
+        if (type == SettingType.COLOR) {
+            return (Color) value;
+        }
+        throw new IllegalStateException("Setting is not a color");
+    }
+
+    // Get color as RGB integer (without alpha)
+    public int getColorRGB() {
+        if (type == SettingType.COLOR) {
+            Color color = (Color) value;
+            return color.getRGB() & 0x00FFFFFF; // Remove alpha bits
+        }
+        throw new IllegalStateException("Setting is not a color");
+    }
+
+    // Get color as ARGB integer (with alpha)
+    public int getColorARGB() {
+        if (type == SettingType.COLOR) {
+            Color color = (Color) value;
+            return color.getRGB(); // Includes alpha
+        }
+        throw new IllegalStateException("Setting is not a color");
+    }
+
+    // Get individual color components
+    public int getColorRed() {
+        return getColorValue().getRed();
+    }
+
+    public int getColorGreen() {
+        return getColorValue().getGreen();
+    }
+
+    public int getColorBlue() {
+        return getColorValue().getBlue();
+    }
+
+    public int getColorAlpha() {
+        return getColorValue().getAlpha();
+    }
+
+    // Get color as hex string
+    public String getColorHex() {
+        if (type == SettingType.COLOR) {
+            Color color = (Color) value;
+            return String.format("#%06X", color.getRGB() & 0x00FFFFFF);
+        }
+        throw new IllegalStateException("Setting is not a color");
+    }
+
+    // Get color as hex string with alpha
+    public String getColorHexAlpha() {
+        if (type == SettingType.COLOR) {
+            Color color = (Color) value;
+            return String.format("#%08X", color.getRGB());
+        }
+        throw new IllegalStateException("Setting is not a color");
     }
 
     // SETTERS
@@ -261,6 +349,72 @@ public class ModuleSettings {
         }
     }
 
+    public void setColorValue(Color color) {
+        if (type == SettingType.COLOR) {
+            this.value = color != null ? color : Color.WHITE;
+        } else {
+            throw new IllegalStateException("Setting is not a color");
+        }
+    }
+
+    // Set color from RGB values
+    public void setColorValue(int red, int green, int blue) {
+        setColorValue(new Color(
+                Math.max(0, Math.min(255, red)),
+                Math.max(0, Math.min(255, green)),
+                Math.max(0, Math.min(255, blue))
+        ));
+    }
+
+    // Set color from RGBA values
+    public void setColorValue(int red, int green, int blue, int alpha) {
+        setColorValue(new Color(
+                Math.max(0, Math.min(255, red)),
+                Math.max(0, Math.min(255, green)),
+                Math.max(0, Math.min(255, blue)),
+                Math.max(0, Math.min(255, alpha))
+        ));
+    }
+
+    // Set color from hex integer
+    public void setColorValue(int hexColor) {
+        setColorValue(new Color(hexColor));
+    }
+
+    // Set color from hex integer with alpha
+    public void setColorValue(int hexColor, boolean hasAlpha) {
+        setColorValue(new Color(hexColor, hasAlpha));
+    }
+
+    // Set color from hex string
+    public void setColorValueFromHex(String hexColor) {
+        if (type == SettingType.COLOR) {
+            try {
+                // Remove # if present
+                if (hexColor.startsWith("#")) {
+                    hexColor = hexColor.substring(1);
+                }
+
+                // Parse hex string
+                if (hexColor.length() == 6) {
+                    // RGB format
+                    int rgb = Integer.parseInt(hexColor, 16);
+                    setColorValue(new Color(rgb));
+                } else if (hexColor.length() == 8) {
+                    // ARGB format
+                    long argb = Long.parseLong(hexColor, 16);
+                    setColorValue(new Color((int) argb, true));
+                } else {
+                    throw new IllegalArgumentException("Invalid hex color format");
+                }
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid hex color: " + hexColor);
+            }
+        } else {
+            throw new IllegalStateException("Setting is not a color");
+        }
+    }
+
     public void setValue(Object value) {
         switch (type) {
             case BOOLEAN:
@@ -297,6 +451,15 @@ public class ModuleSettings {
             case SET:
                 if (value instanceof Set<?>) {
                     setSetValue((Set<?>) value);
+                }
+                break;
+            case COLOR:
+                if (value instanceof Color) {
+                    setColorValue((Color) value);
+                } else if (value instanceof Integer) {
+                    setColorValue((Integer) value);
+                } else if (value instanceof String) {
+                    setColorValueFromHex((String) value);
                 }
                 break;
         }

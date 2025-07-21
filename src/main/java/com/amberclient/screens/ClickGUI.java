@@ -23,7 +23,7 @@ public class ClickGUI extends Screen {
     // Theme colors
     private static final int BASE_BG = new Color(20, 20, 25, 200).getRGB(), PANEL_BG = new Color(30, 30, 35, 255).getRGB();
     private static final int ACCENT = new Color(255, 165, 0).getRGB(), ACCENT_HOVER = new Color(255, 190, 50).getRGB();
-    private static final int TEXT = new Color(220, 220, 220).getRGB(), OUTLINE = new Color(255, 255, 255, 180).getRGB();
+    private static final int TEXT = new Color(255, 255, 255, 255).getRGB(), OUTLINE = new Color(255, 255, 255, 180).getRGB();
 
     // State
     private float animProgress = 0.0f, configAnim = 0.0f, mainScroll = 0.0f, configScroll = 0.0f;
@@ -40,6 +40,8 @@ public class ClickGUI extends Screen {
     private final List<ModuleWrapper> clickedModules = new ArrayList<>();
     private long clickTime = 0;
     private static final long CLICK_DURATION = 300;
+
+    private ModuleSettings openColorPicker = null;
 
     private ModuleSettings openDropdown = null;
 
@@ -121,8 +123,8 @@ public class ClickGUI extends Screen {
 
         int statusY = mainPanel.y + mainPanel.height + 5;
         context.fill(mainPanel.x, statusY, mainPanel.x + mainPanel.width, statusY + 20, applyTransparency(PANEL_BG, trans));
-        context.drawTextWithShadow(textRenderer, configModule != null ? "Configuring: " + configModule.name :
-                "Amber Client " + AmberClient.MOD_VERSION + " • MC 1.21.4", mainPanel.x + 10, statusY + 6, TEXT);
+        context.drawText(textRenderer, configModule != null ? "Configuring: " + configModule.name :
+                "Amber Client " + AmberClient.MOD_VERSION + " • MC 1.21.4", mainPanel.x + 10, statusY + 6, TEXT, false);
 
         super.render(context, mouseX, mouseY, delta);
 
@@ -153,11 +155,11 @@ public class ClickGUI extends Screen {
     private void renderModules(DrawContext context, int x, int y, int w, int h, int mouseX, int mouseY, float trans) {
         if (selectedCat < 0 || selectedCat >= categories.size()) return;
         Category cat = categories.get(selectedCat); // meow
-        context.drawTextWithShadow(textRenderer, cat.name.toUpperCase(), x, y + 10, ACCENT);
+        context.drawText(textRenderer, cat.name.toUpperCase(), x, y + 10, ACCENT, false);
 
         // Add warning for COMBAT category
         if (cat.name.equalsIgnoreCase("COMBAT")) {
-            context.drawTextWithShadow(textRenderer, "Use at your own risks", x, y + 25, new Color(255, 0, 0).getRGB());
+            context.drawText(textRenderer, "Use at your own risks", x, y + 25, new Color(255, 0, 0).getRGB(), false);
         }
 
         int top = y + 30, areaH = h - 40;
@@ -175,9 +177,9 @@ public class ClickGUI extends Screen {
 
             context.fill(x, modY, x + w, modY + modH, mod.isEnabled() ? new Color(ACCENT).darker().getRGB() :
                     applyTransparency(new Color(40, 40, 45, 220).getRGB(), trans));
-            context.drawTextWithShadow(textRenderer, mod.name, x + 10, modY + 7, TEXT);
-            context.drawTextWithShadow(textRenderer, mod.desc, x + 10, modY + 20, new Color(180, 180, 180).getRGB());
-            if (mod.isConfigurable) context.drawTextWithShadow(textRenderer, "⚙", x + w - 50, modY + 7, Color.WHITE.getRGB());
+            context.drawText(textRenderer, mod.name, x + 10, modY + 7, TEXT, false);
+            context.drawText(textRenderer, mod.desc, x + 10, modY + 20, new Color(180, 180, 180).getRGB(), false);
+            if (mod.isConfigurable) context.drawText(textRenderer, "⚙", x + w - 50, modY + 7, Color.WHITE.getRGB(), false);
 
             int togX = x + w - 24, togY = modY + 5;
             boolean hover = isMouseOver(mouseX, mouseY, togX, togY, 18, 18);
@@ -185,7 +187,7 @@ public class ClickGUI extends Screen {
             int color = clicked || hover ? ACCENT_HOVER : new Color(245, 235, 216).getRGB();
             drawBorder(context, togX, togY, 18, 18);
             context.fill(togX, togY, togX + 18, togY + 18, color);
-            if (mod.isEnabled()) context.drawTextWithShadow(textRenderer, "✓", togX + 7, togY + 5, Color.WHITE.getRGB());
+            if (mod.isEnabled()) context.drawText(textRenderer, "✓", togX + 7, togY + 5, Color.WHITE.getRGB(), false);
         }
 
         if (contentH > areaH) {
@@ -201,14 +203,17 @@ public class ClickGUI extends Screen {
     private void renderConfigPanel(DrawContext context, int mouseX, int mouseY) {
         PanelBounds p = calcConfigPanel();
 
+        int colorPickerX = -1;
+        int colorPickerY = -1;
+
         context.fill(p.x, p.y, p.x + p.width, p.y + p.height, new Color(30, 30, 35, 255).getRGB());
         context.fill(p.x, p.y, p.x + p.width, p.y + 30, ACCENT);
-        context.drawTextWithShadow(textRenderer, configModule.name + " Settings", p.x + 10, p.y + 10, Color.WHITE.getRGB());
+        context.drawText(textRenderer, configModule.name + " Settings", p.x + 10, p.y + 10, Color.WHITE.getRGB(), false);
 
         boolean hover = isMouseOver(mouseX, mouseY, p.x + p.width - 25, p.y + 5, 20, 20);
         context.fill(p.x + p.width - 25, p.y + 5, p.x + p.width - 5, p.y + 25,
                 hover ? new Color(255, 80, 80).getRGB() : new Color(200, 50, 50).getRGB());
-        context.drawTextWithShadow(textRenderer, "×", p.x + p.width - 18, p.y + 10, Color.WHITE.getRGB());
+        context.drawText(textRenderer, "×", p.x + p.width - 18, p.y + 10, Color.WHITE.getRGB(), false);
 
         List<ModuleSettings> settings = configModule.settings;
         int top = p.y + 40, areaH = p.height - 50;
@@ -221,16 +226,16 @@ public class ClickGUI extends Screen {
             int setY = top + i * (setH + sp) - (int)configScroll;
             if (setY + setH < top || setY > top + areaH) continue;
 
-            context.fill(p.x + 10, setY, p.x + p.width - 10, setY + setH, new Color(40, 40, 45, 255).getRGB()); // Opaque
-            context.drawTextWithShadow(textRenderer, s.getName(), p.x + 20, setY + 10, TEXT);
-            context.drawTextWithShadow(textRenderer, s.getDescription(), p.x + 20, setY + 25, new Color(180, 180, 180).getRGB());
+            context.fill(p.x + 10, setY, p.x + p.width - 10, setY + setH, new Color(40, 40, 45, 255).getRGB());
+            context.drawText(textRenderer, s.getName(), p.x + 20, setY + 10, TEXT, false);
+            context.drawText(textRenderer, s.getDescription(), p.x + 20, setY + 25, new Color(180, 180, 180).getRGB(), false);
 
             if (s.getType() == ModuleSettings.SettingType.BOOLEAN) {
                 boolean on = s.getBooleanValue(), hoverB = isMouseOver(mouseX, mouseY, p.x + p.width - 60, setY + 10, 40, 20);
                 int bg = hoverB ? (on ? ACCENT_HOVER : new Color(120, 120, 120).getRGB()) : (on ? ACCENT : new Color(100, 100, 100).getRGB());
                 context.fill(p.x + p.width - 60, setY + 10, p.x + p.width - 20, setY + 30, bg);
                 drawBorder(context, p.x + p.width - 60, setY + 10, 40, 20);
-                context.drawTextWithShadow(textRenderer, on ? "ON" : "OFF", p.x + p.width - 50, setY + 15, Color.WHITE.getRGB());
+                context.drawText(textRenderer, on ? "ON" : "OFF", p.x + p.width - 50, setY + 15, Color.WHITE.getRGB(), false);
             } else if (s.getType() == ModuleSettings.SettingType.DOUBLE && s.hasRange()) {
                 double v = s.getDoubleValue(), min = s.getMinValue().doubleValue(), max = s.getMaxValue().doubleValue();
                 context.fill(p.x + p.width - 100, setY + 10, p.x + p.width - 20, setY + 20, new Color(100, 100, 100).getRGB());
@@ -239,7 +244,7 @@ public class ClickGUI extends Screen {
                 String valueText = String.format("%.2f", v);
                 int textWidth = textRenderer.getWidth(valueText);
                 int textX = Math.max(p.x + 10, p.x + p.width - 100 - textWidth - 5);
-                context.drawTextWithShadow(textRenderer, valueText, textX, setY + 11, TEXT);
+                context.drawText(textRenderer, valueText, textX, setY + 11, TEXT, false);
             } else if (s.getType() == ModuleSettings.SettingType.ENUM) {
                 Enum<?> currentValue = s.getEnumValue();
                 String displayText = currentValue.name();
@@ -252,8 +257,8 @@ public class ClickGUI extends Screen {
 
                 context.fill(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight,
                         isMouseOverButton ? new Color(120, 120, 120).getRGB() : new Color(100, 100, 100).getRGB());
-                context.drawTextWithShadow(textRenderer, displayText, buttonX + 5, buttonY + 5, Color.WHITE.getRGB());
-                context.drawTextWithShadow(textRenderer, "▼", buttonX + buttonWidth - 15, buttonY + 5, Color.WHITE.getRGB());
+                context.drawText(textRenderer, displayText, buttonX + 5, buttonY + 5, Color.WHITE.getRGB(), false);
+                context.drawText(textRenderer, "▼", buttonX + buttonWidth - 15, buttonY + 5, Color.WHITE.getRGB(), false);
 
                 if (openDropdown == s) {
                     Enum<?>[] enumValues = currentValue.getDeclaringClass().getEnumConstants();
@@ -264,9 +269,32 @@ public class ClickGUI extends Screen {
                                 (optionHover ? new Color(120, 120, 120).getRGB() : new Color(80, 80, 80).getRGB());
                         context.fill(buttonX, optionY, buttonX + buttonWidth, optionY + 20, optionColor);
                         drawBorder(context, buttonX, optionY, buttonWidth, 20);
-                        context.drawTextWithShadow(textRenderer, enumValue.name(), buttonX + 5, optionY + 5, Color.WHITE.getRGB());
+                        context.drawText(textRenderer, enumValue.name(), buttonX + 5, optionY + 5, Color.WHITE.getRGB(), false);
                         optionY += 20;
                     }
+                }
+            } else if (s.getType() == ModuleSettings.SettingType.COLOR) {
+                Color currentColor = s.getColorValue();
+                int buttonX = p.x + p.width - 100;
+                int buttonY = setY + 10;
+                int buttonWidth = 80;
+                int buttonHeight = 20;
+
+                boolean isMouseOverButton = isMouseOver(mouseX, mouseY, buttonX, buttonY, buttonWidth, buttonHeight);
+
+                // Afficher la couleur actuelle
+                context.fill(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, currentColor.getRGB());
+                drawBorder(context, buttonX, buttonY, buttonWidth, buttonHeight);
+
+                // Texte avec couleur contrastante
+                int textColor = (currentColor.getRed() + currentColor.getGreen() + currentColor.getBlue()) > 400 ?
+                        Color.BLACK.getRGB() : Color.WHITE.getRGB();
+                context.drawText(textRenderer, "Color", buttonX + 5, buttonY + 5, textColor, false);
+
+                // Enregistrer la position si ce paramètre est le ColorPicker actif
+                if (openColorPicker == s) {
+                    colorPickerX = buttonX;
+                    colorPickerY = buttonY + buttonHeight;
                 }
             }
         }
@@ -278,7 +306,88 @@ public class ClickGUI extends Screen {
             context.fill(p.x + p.width - 15, top, p.x + p.width - 10, top + areaH, new Color(50, 50, 55).getRGB());
             context.fill(p.x + p.width - 15, thumbY, p.x + p.width - 10, thumbY + thumbH, ACCENT);
         }
+
+        if (openColorPicker != null && colorPickerX != -1 && colorPickerY != -1) {
+            renderColorPicker(context, colorPickerX, colorPickerY, mouseX, mouseY);
+        }
+
         context.disableScissor();
+    }
+
+    private void renderColorPicker(DrawContext context, int x, int y, int mouseX, int mouseY) {
+        int pickerWidth = 200;
+        int pickerHeight = 150;
+
+        // Calculer la position pour que le picker reste dans les limites du panel
+        PanelBounds configPanel = calcConfigPanel();
+        int pickerX = x;
+        int pickerY = y;
+
+        // Ajuster X si le picker dépasse à droite
+        if (pickerX + pickerWidth > configPanel.x + configPanel.width - 10) {
+            pickerX = configPanel.x + configPanel.width - pickerWidth - 10;
+        }
+
+        // Ajuster Y si le picker dépasse en bas, le placer au-dessus du bouton
+        if (pickerY + pickerHeight > configPanel.y + configPanel.height - 10) {
+            pickerY = y - pickerHeight - 5; // Au-dessus du bouton
+        }
+
+        // S'assurer que le picker ne dépasse pas en haut
+        if (pickerY < configPanel.y + 40) {
+            pickerY = configPanel.y + 40;
+        }
+
+        // Fond du picker (SUPPRESSION DU DOUBLE RENDU)
+        context.fill(pickerX, pickerY, pickerX + pickerWidth, pickerY + pickerHeight, new Color(40, 40, 45, 255).getRGB());
+        drawBorder(context, pickerX, pickerY, pickerWidth, pickerHeight);
+
+        // Zone de couleur principale (HSB)
+        int colorAreaWidth = 150;
+        int brightnessBarHeight = 100;
+        int colorAreaX = pickerX + 10;
+        int colorAreaY = pickerY + 10;
+
+        // Dessiner le gradient de couleur
+        for (int i = 0; i < colorAreaWidth; i++) {
+            for (int j = 0; j < brightnessBarHeight; j++) {
+                float hue = (float) i / colorAreaWidth;
+                float saturation = 1.0f - (float) j / brightnessBarHeight;
+                float brightness = 1.0f;
+
+                int rgb = Color.HSBtoRGB(hue, saturation, brightness);
+                context.fill(colorAreaX + i, colorAreaY + j, colorAreaX + i + 1, colorAreaY + j + 1, rgb);
+            }
+        }
+        drawBorder(context, colorAreaX, colorAreaY, colorAreaWidth, brightnessBarHeight);
+
+        int brightnessBarX = pickerX + colorAreaWidth + 20;
+        int brightnessBarY = pickerY + 10;
+        int brightnessBarWidth = 20;
+
+        for (int j = 0; j < brightnessBarHeight; j++) {
+            float brightness = 1.0f - (float) j / brightnessBarHeight;
+            int rgb = Color.HSBtoRGB(0.0f, 0.0f, brightness);
+            context.fill(brightnessBarX, brightnessBarY + j, brightnessBarX + brightnessBarWidth, brightnessBarY + j + 1, rgb);
+        }
+        drawBorder(context, brightnessBarX, brightnessBarY, brightnessBarWidth, brightnessBarHeight);
+
+        int buttonY = pickerY + pickerHeight - 30;
+
+        boolean okHover = isMouseOver(mouseX, mouseY, pickerX + 10, buttonY, 50, 20);
+        context.fill(pickerX + 10, buttonY, pickerX + 60, buttonY + 20, okHover ? ACCENT_HOVER : ACCENT);
+        context.drawText(textRenderer, "OK", pickerX + 30, buttonY + 5, Color.WHITE.getRGB(), false);
+
+        boolean cancelHover = isMouseOver(mouseX, mouseY, pickerX + 70, buttonY, 50, 20);
+        context.fill(pickerX + 70, buttonY, pickerX + 120, buttonY + 20,
+                cancelHover ? new Color(200, 80, 80).getRGB() : new Color(150, 60, 60).getRGB());
+        context.drawText(textRenderer, "Cancel", pickerX + 85, buttonY + 5, Color.WHITE.getRGB(), false);
+
+        if (openColorPicker != null) {
+            Color previewColor = openColorPicker.getColorValue();
+            context.fill(pickerX + 130, buttonY, pickerX + 190, buttonY + 20, previewColor.getRGB());
+            drawBorder(context, pickerX + 130, buttonY, 60, 20);
+        }
     }
 
     private PanelBounds calcConfigPanel() {
@@ -364,6 +473,95 @@ public class ClickGUI extends Screen {
                                     return true;
                                 }
                                 optionY += 20;
+                            }
+                        }
+                    } else if (s.getType() == ModuleSettings.SettingType.COLOR) {
+                        int buttonX = p.x + p.width - 100;
+                        int buttonY = setY + 10;
+                        int buttonWidth = 80;
+                        int buttonHeight = 20;
+
+                        if (isMouseOver((int)mx, (int)my, buttonX, buttonY, buttonWidth, buttonHeight)) {
+                            openColorPicker = (openColorPicker == s) ? null : s;
+                            return true;
+                        }
+
+                        // Gérer les clics dans le color picker
+                        if (openColorPicker == s) {
+                            PanelBounds configPanel = calcConfigPanel();
+                            int pickerX = buttonX;
+                            int pickerY = buttonY + buttonHeight;
+                            int pickerWidth = 200;
+                            int pickerHeight = 150;
+
+                            // Ajuster la position (même logique que renderColorPicker)
+                            if (pickerX + pickerWidth > configPanel.x + configPanel.width - 10) {
+                                pickerX = configPanel.x + configPanel.width - pickerWidth - 10;
+                            }
+                            if (pickerY + pickerHeight > configPanel.y + configPanel.height - 10) {
+                                pickerY = buttonY - pickerHeight - 5;
+                            }
+                            if (pickerY < configPanel.y + 40) {
+                                pickerY = configPanel.y + 40;
+                            }
+
+                            // Clic dans la zone du picker
+                            if (isMouseOver((int)mx, (int)my, pickerX, pickerY, pickerWidth, pickerHeight)) {
+                                // Zone de couleur principale
+                                int colorAreaX = pickerX + 10;
+                                int colorAreaY = pickerY + 10;
+                                int colorAreaWidth = 150;
+                                int colorAreaHeight = 100;
+
+                                if (isMouseOver((int)mx, (int)my, colorAreaX, colorAreaY, colorAreaWidth, colorAreaHeight)) {
+                                    float hue = (float) (mx - colorAreaX) / colorAreaWidth;
+                                    float saturation = 1.0f - (float) (my - colorAreaY) / colorAreaHeight;
+                                    float brightness = 1.0f;
+
+                                    hue = Math.max(0, Math.min(1, hue));
+                                    saturation = Math.max(0, Math.min(1, saturation));
+
+                                    int rgb = Color.HSBtoRGB(hue, saturation, brightness);
+                                    s.setColorValue(new Color(rgb));
+                                    ((ConfigurableModule)configModule.module).onSettingChanged(s);
+                                    return true;
+                                }
+
+                                // Barre de luminosité
+                                int brightnessBarX = pickerX + colorAreaWidth + 20;
+                                int brightnessBarY = pickerY + 10;
+                                int brightnessBarWidth = 20;
+                                int brightnessBarHeight = colorAreaHeight;
+
+                                if (isMouseOver((int)mx, (int)my, brightnessBarX, brightnessBarY, brightnessBarWidth, brightnessBarHeight)) {
+                                    float brightness = 1.0f - (float) (my - brightnessBarY) / brightnessBarHeight;
+                                    brightness = Math.max(0, Math.min(1, brightness));
+
+                                    Color currentColor = s.getColorValue();
+                                    float[] hsb = Color.RGBtoHSB(currentColor.getRed(), currentColor.getGreen(), currentColor.getBlue(), null);
+
+                                    int rgb = Color.HSBtoRGB(hsb[0], hsb[1], brightness);
+                                    s.setColorValue(new Color(rgb));
+                                    ((ConfigurableModule)configModule.module).onSettingChanged(s);
+                                    return true;
+                                }
+
+                                // Bouton OK
+                                if (isMouseOver((int)mx, (int)my, pickerX + 10, pickerY + pickerHeight - 30, 50, 20)) {
+                                    openColorPicker = null;
+                                    return true;
+                                }
+
+                                // Bouton Cancel
+                                if (isMouseOver((int)mx, (int)my, pickerX + 70, pickerY + pickerHeight - 30, 50, 20)) {
+                                    openColorPicker = null;
+                                    return true;
+                                }
+
+                                return true; // Consommer le clic dans le picker
+                            } else {
+                                // Clic à l'extérieur du picker, le fermer
+                                openColorPicker = null;
                             }
                         }
                     }
@@ -500,6 +698,7 @@ public class ClickGUI extends Screen {
         configScroll = 0.0f;
         draggedSetting = null;
         openDropdown = null;
+        openColorPicker = null;
         super.close();
     }
 
