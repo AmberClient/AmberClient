@@ -1,11 +1,10 @@
-package com.amberclient.modules.minigames
+package com.amberclient.modules.minigames.murdererfinder
 
-import com.amberclient.utils.module.ModuleSettings
-import com.amberclient.utils.features.murdererfinder.MurdererFinder
+import com.amberclient.modules.minigames.murdererfinder.config.ConfigManager
 import com.amberclient.utils.module.ConfigurableModule
 import com.amberclient.utils.module.Module
-import com.amberclient.utils.features.murdererfinder.config.ConfigManager
 import com.amberclient.utils.module.ModuleCategory
+import com.amberclient.utils.module.ModuleSettings
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 import org.apache.logging.log4j.LogManager
@@ -15,9 +14,10 @@ import org.apache.logging.log4j.Logger
       Mod originally created by https://github.com/thatDudo for 1.18.1
       Remastered in 1.21.4 and improved by https://github.com/gqdThinky
       All credits go to thatDudo.
- */
+*/
 
-class MMFinder : Module("MurdererFinder", "Find the murderer in Hypixel's Murder Mystery", ModuleCategory.MINIGAMES), ConfigurableModule {
+class MMFinder : Module("MurdererFinder", "Find the murderer in Hypixel's Murder Mystery", ModuleCategory.MINIGAMES),
+    ConfigurableModule {
 
     companion object {
         const val MOD_ID = "amberclient-murderfinder"
@@ -37,11 +37,17 @@ class MMFinder : Module("MurdererFinder", "Find the murderer in Hypixel's Murder
     init {
         // Initialize settings with values from Config
         val config = ConfigManager.getConfig()
-        highlightMurders = ModuleSettings("Highlight Murderers", "Highlight players identified as murderers", config.mm.shouldHighlightMurders())
-        highlightGold = ModuleSettings("Highlight Gold", "Highlight gold items in the game", config.mm.shouldHighlightGold())
+        highlightMurders = ModuleSettings(
+            "Highlight Murderers",
+            "Highlight players identified as murderers",
+            config.mm.shouldHighlightMurders()
+        )
+        highlightGold =
+            ModuleSettings("Highlight Gold", "Highlight gold items in the game", config.mm.shouldHighlightGold())
         highlightBows = ModuleSettings("Highlight Bows", "Highlight bows in the game", config.mm.shouldHighlightBows())
         showNameTags = ModuleSettings("Show Name Tags", "Display name tags for players", config.mm.shouldShowNameTags())
-        highlightSpectators = ModuleSettings("Highlight Spectators", "Highlight spectator players", config.mm.shouldHighlightSpectators())
+        highlightSpectators =
+            ModuleSettings("Highlight Spectators", "Highlight spectator players", config.mm.shouldHighlightSpectators())
 
         settings = mutableListOf(
             highlightMurders,

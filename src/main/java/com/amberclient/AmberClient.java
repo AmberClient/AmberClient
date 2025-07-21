@@ -4,11 +4,10 @@ import com.amberclient.modules.world.MacroRecorder.MacroRecordingSystem;
 import com.amberclient.screens.HudRenderer;
 import com.amberclient.screens.ClickGUI;
 import com.amberclient.commands.AmberCommand;
-import com.amberclient.utils.font.FontUtil;
 import com.amberclient.utils.input.keybinds.KeybindsManager;
 import com.amberclient.utils.module.Module;
 import com.amberclient.utils.module.ModuleManager;
-import com.amberclient.utils.features.murdererfinder.config.ConfigManager;
+import com.amberclient.modules.minigames.murdererfinder.config.ConfigManager;
 import com.amberclient.utils.discord.DiscordManager;
 import com.amberclient.utils.minecraft.MinecraftUtils;
 import net.fabricmc.api.ModInitializer;
@@ -58,7 +57,6 @@ public class AmberClient implements ModInitializer {
             }
         });
 
-        FontUtil.bootstrap();
         AmberCommand.register();
 
         KeybindsManager.INSTANCE.initialize();

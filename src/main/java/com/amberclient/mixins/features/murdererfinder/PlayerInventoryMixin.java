@@ -1,8 +1,8 @@
 package com.amberclient.mixins.features.murdererfinder;
 
 import com.amberclient.utils.minecraft.MinecraftUtils;
-import com.amberclient.utils.features.murdererfinder.MurdererFinder;
-import com.amberclient.utils.features.murdererfinder.config.ConfigManager;
+import com.amberclient.modules.minigames.murdererfinder.MurdererFinder;
+import com.amberclient.modules.minigames.murdererfinder.config.ConfigManager;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;

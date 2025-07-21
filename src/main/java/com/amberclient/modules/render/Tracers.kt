@@ -25,17 +25,17 @@ import java.awt.Color
 
 class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory.RENDER), ConfigurableModule {
 
-    enum class TracerOrigin(val displayName: String) {
-        BODY("Body"),
-        OFFSCREEN("Offscreen"),
-        CURSOR("Cursor")
+    enum class TracerOrigin() {
+        BODY,
+        OFFSCREEN,
+        CURSOR
     }
 
-    enum class TracerMode(val displayName: String) {
-        PLAYERS_ONLY("Players Only"),
-        MOBS_ONLY("Mobs Only"),
-        ALL("All Entities"),
-        NONE("None")
+    enum class TracerMode() {
+        PLAYERS_ONLY,
+        MOBS_ONLY,
+        ALL,
+        NONE
     }
 
     private var mode = TracerMode.ALL
@@ -44,9 +44,8 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     private var lineWidth = 2.0f
     private var tracerOrigin = TracerOrigin.BODY
 
-    // Couleurs configurables
-    private var playerColor = Color(255, 165, 0) // Orange par défaut
-    private var mobColor = Color(207, 48, 48)    // Rouge par défaut
+    private var playerColor = Color(255, 165, 0)
+    private var mobColor = Color(207, 48, 48)
     private val defaultColor = Color(255, 255, 255)
 
     private var renderCallback: WorldRenderEvents.AfterEntities? = null
@@ -54,7 +53,7 @@ class Tracers : Module("Tracers", "Draws lines towards entities", ModuleCategory
     override fun getSettings(): List<ModuleSettings> {
         return listOf(
             ModuleSettings("Mode", "What entities to show tracers for", mode),
-            ModuleSettings("Use Distance Transparency", "Make tracers more transparent with distance", useDistanceTransparency),
+            ModuleSettings("Use Distance Transparency", "Make tracers transparent with distance", useDistanceTransparency),
             ModuleSettings("Max Distance", "Maximum distance for tracers", maxDistance.toDouble(), 1.0, 512.0, 1.0),
             ModuleSettings("Tracer Origin", "Where tracers start from", tracerOrigin),
             ModuleSettings("Player Color", "Color for player tracers", playerColor),

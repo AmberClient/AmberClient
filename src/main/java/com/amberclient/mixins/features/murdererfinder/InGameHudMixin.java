@@ -1,7 +1,7 @@
 package com.amberclient.mixins.features.murdererfinder;
 
 import com.amberclient.utils.minecraft.MinecraftUtils;
-import com.amberclient.utils.features.murdererfinder.MurdererFinder;
+import com.amberclient.modules.minigames.murdererfinder.MurdererFinder;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;

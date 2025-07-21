@@ -19,6 +19,7 @@ import net.minecraft.util.hit.HitResult
 import net.minecraft.util.math.*
 import net.minecraft.world.RaycastContext
 import org.lwjgl.opengl.GL11
+import java.awt.Color
 
 class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles", ModuleCategory.RENDER), ConfigurableModule {
 
@@ -34,19 +35,23 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
     private var lineWidth = 2.0f
     private var maxIterations = 100
 
+    // Color settings
+    private var trajectoryColor = Color(255, 0, 0, 150)
+    private var hitBoxColor = Color(255, 255, 0, 100)
+    private var approxBoxColor = Color(255, 165, 0, 80)
+
     private val simpleItems = setOf(Items.SNOWBALL, Items.ENDER_PEARL, Items.EGG)
     private val complexItems = setOf(Items.BOW, Items.CROSSBOW)
-
-    private val trajectoryColor = ColorCache(255, 0, 0, 150)
-    private val hitBoxColor = ColorCache(255, 255, 0, 100)
-    private val approxBoxColor = ColorCache(255, 165, 0, 80)
 
     private var renderCallback: WorldRenderEvents.AfterEntities? = null
     private var tempEntity: SnowballEntity? = null
 
     private data class ColorCache(val r: Float, val g: Float, val b: Float, val a: Float) {
-        constructor(r: Int, g: Int, b: Int, a: Int) : this(
-            r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f
+        constructor(color: Color) : this(
+            color.red / 255.0f,
+            color.green / 255.0f,
+            color.blue / 255.0f,
+            color.alpha / 255.0f
         )
     }
 
@@ -63,7 +68,11 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
             ModuleSettings("Box Visibility", "Show the hit box", boxVisibility),
             ModuleSettings("Approx Box Visibility", "Show the approximate hit box", approxBoxVisibility),
             ModuleSettings("Max Iterations", "Maximum calculation iterations", maxIterations.toDouble(), 50.0, 200.0, 10.0),
-            ModuleSettings("Line Origin", "Origin of the trajectory line", lineOrigin)
+            ModuleSettings("Line Width", "Width of the trajectory line", lineWidth.toDouble(), 1.0, 10.0, 0.5),
+            ModuleSettings("Line Origin", "Origin of the trajectory line", lineOrigin),
+            ModuleSettings("Trajectory Color", "Color of the trajectory line", trajectoryColor),
+            ModuleSettings("Hit Box Color", "Color of the hit box", hitBoxColor),
+            ModuleSettings("Approx Box Color", "Color of the approximate hit box", approxBoxColor)
         )
     }
 
@@ -73,7 +82,11 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
             "Box Visibility" -> boxVisibility = setting.getBooleanValue()
             "Approx Box Visibility" -> approxBoxVisibility = setting.getBooleanValue()
             "Max Iterations" -> maxIterations = setting.getDoubleValue().toInt()
+            "Line Width" -> lineWidth = setting.getDoubleValue().toFloat()
             "Line Origin" -> lineOrigin = setting.getEnumValue<LineOrigin>()
+            "Trajectory Color" -> trajectoryColor = setting.getColorValue()
+            "Hit Box Color" -> hitBoxColor = setting.getColorValue()
+            "Approx Box Color" -> approxBoxColor = setting.getColorValue()
         }
     }
 
@@ -175,14 +188,14 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
             if (hitResult.type != HitResult.Type.MISS) {
                 val hitPos = hitResult.pos
                 if (lineVisibility) {
-                    addLineVertices(bufferBuilder, prevPosition, hitPos, cameraPos, trajectoryColor)
+                    addLineVertices(bufferBuilder, prevPosition, hitPos, cameraPos, ColorCache(trajectoryColor))
                 }
                 renderHitBoxes(bufferBuilder, hitPos, cameraPos, player.pos.distanceTo(hitPos))
                 return
             }
 
             if (lineVisibility) {
-                addLineVertices(bufferBuilder, prevPosition, entityPosition, cameraPos, trajectoryColor)
+                addLineVertices(bufferBuilder, prevPosition, entityPosition, cameraPos, ColorCache(trajectoryColor))
             }
 
             prevPosition = entityPosition
@@ -232,12 +245,12 @@ class Trajectory : Module("Trajectory", "Renders the trajectory of projectiles",
         val relativePos = hitPos.subtract(cameraPos)
 
         if (boxVisibility) {
-            addBoxVertices(bufferBuilder, relativePos, 0.5, hitBoxColor)
+            addBoxVertices(bufferBuilder, relativePos, 0.5, ColorCache(hitBoxColor))
         }
 
         if (approxBoxVisibility) {
             val approxSize = if (distance > 30) distance / 70 else 0.5
-            addBoxVertices(bufferBuilder, relativePos, approxSize, approxBoxColor)
+            addBoxVertices(bufferBuilder, relativePos, approxSize, ColorCache(approxBoxColor))
         }
     }
 

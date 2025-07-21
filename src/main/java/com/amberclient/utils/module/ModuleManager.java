@@ -6,7 +6,7 @@ import com.amberclient.modules.miscellaneous.DiscordRPC;
 import com.amberclient.modules.miscellaneous.ActiveMods;
 import com.amberclient.modules.miscellaneous.NoAnimations;
 import com.amberclient.modules.miscellaneous.Transparency;
-import com.amberclient.modules.minigames.MMFinder;
+import com.amberclient.modules.minigames.murdererfinder.MMFinder;
 import com.amberclient.modules.movement.AutoClutch;
 import com.amberclient.modules.movement.NoFall;
 import com.amberclient.modules.movement.SafeWalk;

@@ -1,8 +1,8 @@
 package com.amberclient.mixins.features.murdererfinder;
 
-import com.amberclient.utils.features.murdererfinder.MurdererFinder;
+import com.amberclient.modules.minigames.murdererfinder.MurdererFinder;
 import com.amberclient.utils.accessors.PlayerEntityMixinAccessor;
-import com.amberclient.utils.features.murdererfinder.config.ConfigManager;
+import com.amberclient.modules.minigames.murdererfinder.config.ConfigManager;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;

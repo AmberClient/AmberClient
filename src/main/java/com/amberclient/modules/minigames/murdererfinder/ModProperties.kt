@@ -1,4 +1,4 @@
-package com.amberclient.utils.features.murdererfinder
+package com.amberclient.modules.minigames.murdererfinder
 
 import com.amberclient.utils.minecraft.MinecraftUtils
 
