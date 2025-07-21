@@ -124,7 +124,7 @@ public class ClickGUI extends Screen {
         int statusY = mainPanel.y + mainPanel.height + 5;
         context.fill(mainPanel.x, statusY, mainPanel.x + mainPanel.width, statusY + 20, applyTransparency(PANEL_BG, trans));
         context.drawText(textRenderer, configModule != null ? "Configuring: " + configModule.name :
-                "Amber Client " + AmberClient.MOD_VERSION + " • MC 1.21.4", mainPanel.x + 10, statusY + 6, TEXT, false);
+                "Amber Client " + AmberClient.MOD_VERSION + " • MC 1.21.4", mainPanel.x + 10, statusY + 6, TEXT, true);
 
         super.render(context, mouseX, mouseY, delta);
 
