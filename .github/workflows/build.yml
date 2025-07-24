@@ -1,30 +1,129 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
+# This workflow builds your project and uploads JARs to GitHub releases
+name: Build and Dispatch Release
 
-name: build
-on: [pull_request, push]
+on:
+  push:
+    branches:
+      - main # Adjust if you want this triggered on another branch, like `dev`
+  workflow_dispatch:
+    inputs:
+      desc:
+        description: "Enter a custom description for the release"
+        required: false
+        default: "Weekly release"
+      custom_ver:
+        description: "Enter a custom version tag"
+        required: false
+      custom_name:
+        description: "Enter a custom release name"
+        required: false
+      has_commitlog:
+        description: "Include Weekly Commit Log?"
+        required: true
+        default: false
+        type: boolean
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at 00:00 UTC
+
+permissions:
+  contents: write
+  models: read
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
-      - name: checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: validate gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-      - name: setup jdk
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'microsoft'
-      - name: make gradle wrapper executable
-        run: chmod +x ./gradlew
-      - name: build
-        run: ./gradlew build
-      - name: capture build artifacts
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Build project
+        run: gradle build
+
+      - name: Capture build artifacts (JAR files)
         uses: actions/upload-artifact@v4
         with:
-          name: Artifacts
-          path: build/libs/
+          name: jar-files
+          path: build/libs/*.jar
+
+  release:
+    if: github.event.inputs.has_commitlog == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up date variables
+        id: dates
+        run: |
+          TODAY=$(date -u +"%Y-%m-%d")
+          NOW=$(date -u +"%H.%M.%S")
+          LAST_WEEK=$(date -u -d "last monday -7 days" +"%Y-%m-%d")
+          echo "today=$TODAY" >> $GITHUB_OUTPUT
+          echo "now=$NOW" >> $GITHUB_OUTPUT
+          echo "lastweek=$LAST_WEEK" >> $GITHUB_OUTPUT
+
+      - name: Get commits from past week
+        id: commits
+        run: |
+          git fetch --prune --unshallow || true
+          COMMITS=$(git log --since="${{ steps.dates.outputs.lastweek }}T00:00:00Z" --until="${{ steps.dates.outputs.today }}T00:00:00Z" --pretty=format:"%h %s" --no-merges)
+          echo "$COMMITS"
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Format commits as blockquote
+        id: fc
+        run: |
+          FORMATTED=$(echo "${{ steps.commits.outputs.commits }}" | sed 's/^/> /')
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$FORMATTED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Read current version
+        id: currentver
+        run: |
+          VERSION=$(cat VERSIONFILE)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Format commit log section
+        id: commitlog_section
+        run: |
+          HAS_LOG="${{ github.event.inputs.has_commitlog }}"
+          if [ "$HAS_LOG" = "true" ]; then
+            {
+              echo "text<<EOF"
+              echo "## This Week's Commits"
+              echo "---"
+              echo "${{ steps.fc.outputs.commits }}"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "text=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.custom_ver != '' && github.event.inputs.custom_ver || format('{0}-{1}-time-{2}-weekly', steps.currentver.outputs.version, steps.dates.outputs.today, steps.dates.outputs.now) }}
+          name: ${{ github.event.inputs.custom_name != '' && github.event.inputs.custom_name || format('{0}-weekly-{1}', steps.currentver.outputs.version, steps.dates.outputs.today) }}
+          body: |
+            ${{ github.event.inputs.desc }}
+            ---
+            ${{ steps.commitlog_section.outputs.text }}
+          files: |
+            build/libs/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
