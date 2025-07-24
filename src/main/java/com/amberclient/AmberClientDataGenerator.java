@@ -8,3 +8,4 @@ public class AmberClientDataGenerator implements DataGeneratorEntrypoint {
 	public void onInitializeDataGenerator(FabricDataGenerator fabricDataGenerator) {
 	}
 }
+//ProgMEM wuz here

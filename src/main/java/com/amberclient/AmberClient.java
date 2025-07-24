@@ -47,7 +47,7 @@ public class AmberClient implements ModInitializer {
             hudLayerRegistered = true;
         }
 
-        // Register world render event for module rendering
+        // Register world render event for module rendering // ProgMEM wuz here
         WorldRenderEvents.END.register(context -> {
             MatrixStack stack = context.matrixStack();
             ModuleManager moduleManager = ModuleManager.getInstance();
